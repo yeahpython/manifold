@@ -10,6 +10,14 @@
 	padding-bottom: 30px;
 }
 
+.explanation-message {
+	//max-width: 600px;
+	font-size: 20px;
+}
+
+ul li {
+	margin-bottom: 10px;
+}
 .copyright {
 	color: #666666;
 	text-align: center;
