@@ -1,4 +1,9 @@
+var mouse = {x: 0, y: 0};
 
+document.addEventListener('mousemove', function(e){ 
+    mouse.x = e.clientX || e.pageX; 
+    mouse.y = e.clientY || e.pageY 
+}, false);
 
 
 var scene = new THREE.Scene();
@@ -81,27 +86,44 @@ var fShow33 = function(callback, left, right) {
 fShow33(myFunction, leftPlot, rightPlot);
 
 var bubbleSample = function(callback, left, right) {
-	var domainSurface = new THREE.SphereGeometry(5, 32, 32);
-	domainSurface.applyMatrix(new THREE.Matrix4().makeTranslation(left.position.x, left.position.y, left.position.z));
+	var domainSurface = new THREE.SphereGeometry(5, 20, 20);
+	//domainSurface.applyMatrix(new THREE.Matrix4().makeTranslation(left.position.x, left.position.y, left.position.z));
 	var material = new THREE.MeshBasicMaterial({color:0xff0000, wireframe:true});
 	var domainSphere = new THREE.Mesh( domainSurface, material );
 	scene.add( domainSphere );
+	THREE.SceneUtils.attach(domainSphere, scene, left);
+	domainSphere.position.set(0,0,0);
 
-	var rangeSurface = new THREE.SphereGeometry(5, 32, 32);
+	var rangeSurface = new THREE.SphereGeometry(5, 20, 20);
 	for (var i = 0; i < rangeSurface.vertices.length; i++) {
 		rangeSurface.vertices[i] = callback(rangeSurface.vertices[i]);
 	}
-	rangeSurface.applyMatrix(new THREE.Matrix4().makeTranslation(right.position.x, right.position.y, right.position.z));
+	//rangeSurface.applyMatrix(new THREE.Matrix4().makeTranslation(right.position.x, right.position.y, right.position.z));
 	var rangeShape = new THREE.Mesh(rangeSurface, material);
 	scene.add(rangeShape);
-	return domainSphere
+	THREE.SceneUtils.attach(rangeShape, scene, right);
+	rangeShape.position.set(0,0,0);
+	return [domainSphere, rangeShape]
 }
 
-domainSphere = bubbleSample(myFunction, leftPlot, rightPlot);
+surfaces = bubbleSample(myFunction, leftPlot, rightPlot);
 
-var updateMeshWithInput = function(mesh, x, y, z) {
+var DOMAIN = 0;
+var RANGE = 1;
+
+var cursorSurface = new THREE.SphereGeometry(4,20,20);
+
+// Janky and assumes linearity of input -> translation mapping, but whatever.
+var updateMeshWithInput = function(mesh, vec) {
 	mesh.geometry.dynamic = true;
-	mesh.geometry.applyMatrix(new THREE.Matrix4().makeTranslation(x,y,z));
+	if (mesh.geometry.vertices.length == cursorSurface.vertices.length) {
+		for (var i = 0; i < cursorSurface.vertices.length; i++) {
+			mesh.geometry.vertices[i].copy(cursorSurface.vertices[i]).add(vec);
+		}
+	} else {
+		console.log(["error"][3]);
+	}
+	//mesh.position.set(x,y,z); // not working because I want to change the vertices, not the position.
 	mesh.geometry.verticesNeedUpdate = true;
 }
 
@@ -113,12 +135,34 @@ camera.up.set(0,0,1);
 camera.lookAt(new THREE.Vector3(0,0,0));
 
 var buttonHandler = function(){
-	animating = false;
+	if (animating){
+		animating = false;
+		document.getElementById("animationToggle").innerHTML = "Start animation";
+	} else {
+		animating = true;
+		document.getElementById("animationToggle").innerHTML = "Stop animation";
+		render();
+	}
+}
+
+var updateRangeWithDomain = function(range,domain,callback) {
+	range.geometry.dynamic = true;
+	if (range.geometry.vertices.length == domain.geometry.vertices.length) {
+		for (var i = 0; i < domain.geometry.vertices.length; i++) {
+			range.geometry.vertices[i] = callback(domain.geometry.vertices[i]);
+		}
+	} else {
+		console.log(["error"][3]);
+	}
+	range.geometry.verticesNeedUpdate = true;
 }
 
 var render = function () {
 	var t = 0.002 * new Date().getTime();
-	//updateMeshWithInput(domainSphere, 0.005,0.005,0.005);
+	inputX = (mouse.x / width) - 0.5;
+	inputY = (mouse.y / height) - 0.5
+	updateMeshWithInput(surfaces[DOMAIN], new THREE.Vector3( -10*inputX , 10 * inputX, -10 * inputY) );
+	updateRangeWithDomain(surfaces[RANGE], surfaces[DOMAIN], myFunction);
 	camera.position.x = 20 + 2 * Math.sin(t);
 	camera.position.y = 20 - 2 * Math.sin(t);
 	camera.lookAt(new THREE.Vector3(0,0,0));
