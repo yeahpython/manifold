@@ -45,35 +45,42 @@ var leftPlot = constructPlot(offset, -offset, 0);
 var rightPlot = constructPlot(-offset, offset, 0);
 
 var myFunction = function(vector) {
-	return new THREE.Vector3(vector);
+	return new THREE.Vector3(vector.x, vector.y, vector.z + Math.sin(vector.y));
 }
 
 var fShow33 = function(callback, left, right) {
-	var points = new THREE.Geometry();
+	var domainPoints = new THREE.Geometry();
+	var rangePoints = new THREE.Geometry();
+	left.updateMatrixWorld();
+	right.updateMatrixWorld();
 	for (var i = -5; i < 5; i++) {
 		for (var j = -5; j < 5; j++) {
 			for (var k = -5; k < 5; k++) {
 				var domainPoint = new THREE.Vector3(i,j,k);
 				var rangePoint = callback(domainPoint);
-				console.log(left.position);
-				console.log(right.position);
-				points.vertices.push(left.localToWorld(domainPoint), right.localToWorld(rangePoint));
+
+				domainPoints.vertices.push(left.localToWorld(domainPoint));
+
+				rangePoints.vertices.push(right.localToWorld(rangePoint));
 			}
 		}
 	}
-	var material = new THREE.PointCloudMaterial({color:0x000000});
-	var pointcloud = new THREE.PointCloud(points,material);
-	console.log(scene);
-	scene.add(pointcloud);
-	return pointcloud;
+	var material = new THREE.PointCloudMaterial({color:0x000000, size:0.5});
+	scene.add(new THREE.PointCloud(domainPoints, material));
+	scene.add(new THREE.PointCloud(rangePoints, material));
+	//THREE.SceneUtils.attach(domainPoints, scene, left);
+	//THREE.SceneUtils.attach(rangePoints, scene, right);
+
+
+	return {domain:domainPoints, range:rangePoints};
 }
 
 fShow33(myFunction, leftPlot, rightPlot);
 
 // point camera
 camera.position.z = 10;
-camera.position.x = 20;
-camera.position.y = 20;
+camera.position.x = 30;
+camera.position.y = 10;
 camera.up.set(0,0,1);
 camera.lookAt(new THREE.Vector3(0,0,0));
 
@@ -82,9 +89,13 @@ var buttonHandler = function(){
 }
 
 var render = function () {
-	/*if (animating) {
+	var t = 0.005 * new Date().getTime();
+	camera.position.x = 30 + Math.sin(t);
+	camera.position.y = 10 - Math.sin(t);
+	camera.lookAt(new THREE.Vector3(0,0,0));
+	if (animating) {
 		requestAnimationFrame( render );
-	}*/
+	}
 	renderer.render(scene, camera);
 };
 
