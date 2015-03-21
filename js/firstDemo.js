@@ -53,9 +53,10 @@ var fShow33 = function(callback, left, right) {
 	var rangePoints = new THREE.Geometry();
 	left.updateMatrixWorld();
 	right.updateMatrixWorld();
-	for (var i = -5; i < 5; i++) {
-		for (var j = -5; j < 5; j++) {
-			for (var k = -5; k < 5; k++) {
+	var m = 5.5;
+	for (var i = -m; i <= m; i+=2) {
+		for (var j = -m; j <= m; j+=2) {
+			for (var k = -m; k <=m; k+=2) {
 				var domainPoint = new THREE.Vector3(i,j,k);
 				var rangePoint = callback(domainPoint);
 
@@ -65,9 +66,11 @@ var fShow33 = function(callback, left, right) {
 			}
 		}
 	}
-	var material = new THREE.PointCloudMaterial({color:0x000000, size:0.5});
-	scene.add(new THREE.PointCloud(domainPoints, material));
-	scene.add(new THREE.PointCloud(rangePoints, material));
+	var domainMaterial = new THREE.PointCloudMaterial({color:0x000000, size:0.3});
+	scene.add(new THREE.PointCloud(domainPoints, domainMaterial));
+
+	var rangeMaterial = new THREE.PointCloudMaterial({color:0x000000, size:0.3});
+	scene.add(new THREE.PointCloud(rangePoints, rangeMaterial));
 	//THREE.SceneUtils.attach(domainPoints, scene, left);
 	//THREE.SceneUtils.attach(rangePoints, scene, right);
 
@@ -77,10 +80,35 @@ var fShow33 = function(callback, left, right) {
 
 fShow33(myFunction, leftPlot, rightPlot);
 
+var bubbleSample = function(callback, left, right) {
+	var domainSurface = new THREE.SphereGeometry(5, 32, 32);
+	domainSurface.applyMatrix(new THREE.Matrix4().makeTranslation(left.position.x, left.position.y, left.position.z));
+	var material = new THREE.MeshBasicMaterial({color:0xff0000, wireframe:true});
+	var domainSphere = new THREE.Mesh( domainSurface, material );
+	scene.add( domainSphere );
+
+	var rangeSurface = new THREE.SphereGeometry(5, 32, 32);
+	for (var i = 0; i < rangeSurface.vertices.length; i++) {
+		rangeSurface.vertices[i] = callback(rangeSurface.vertices[i]);
+	}
+	rangeSurface.applyMatrix(new THREE.Matrix4().makeTranslation(right.position.x, right.position.y, right.position.z));
+	var rangeShape = new THREE.Mesh(rangeSurface, material);
+	scene.add(rangeShape);
+	return domainSphere
+}
+
+domainSphere = bubbleSample(myFunction, leftPlot, rightPlot);
+
+var updateMeshWithInput = function(mesh, x, y, z) {
+	mesh.geometry.dynamic = true;
+	mesh.geometry.applyMatrix(new THREE.Matrix4().makeTranslation(x,y,z));
+	mesh.geometry.verticesNeedUpdate = true;
+}
+
 // point camera
 camera.position.z = 10;
-camera.position.x = 30;
-camera.position.y = 10;
+camera.position.x = 20;
+camera.position.y = 20;
 camera.up.set(0,0,1);
 camera.lookAt(new THREE.Vector3(0,0,0));
 
@@ -89,9 +117,10 @@ var buttonHandler = function(){
 }
 
 var render = function () {
-	var t = 0.005 * new Date().getTime();
-	camera.position.x = 30 + Math.sin(t);
-	camera.position.y = 10 - Math.sin(t);
+	var t = 0.002 * new Date().getTime();
+	//updateMeshWithInput(domainSphere, 0.005,0.005,0.005);
+	camera.position.x = 20 + 2 * Math.sin(t);
+	camera.position.y = 20 - 2 * Math.sin(t);
 	camera.lookAt(new THREE.Vector3(0,0,0));
 	if (animating) {
 		requestAnimationFrame( render );
