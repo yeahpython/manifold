@@ -2,28 +2,19 @@
 <html>
 <head>
 	<link rel="stylesheet" type="text/css" href="css/style.css">
+  <script src="js/external/three.min.js"></script>
+  <script src="js/firstDemo.js"></script>
 </head>
-<body>
-  <div class = "main-container">
-    <h1>manifold</h1>
+<body onload = "initialize()">
+  <div style = "position:absolute; font-family:sans-serif">
+    Getting started! Here's what a 3D to 3D function might look like.
     <br>
-    <div class = "explanation-message">
-      This is the starter page of a new tool for multivariable calculus education. Here's the basic premise:
-      <ul>
-        <li>Multivariable calculus is useful for students of many disciplines</li>
-        <li>It's hard to learn</li>
-        <li>It's generally explained in 3D</li>
-        <li>For years, it's been taught on 2D whiteboards, which makes some concepts difficult to convey</li>
-        <li>It's finally possible to teach this stuff in interactive 3D, so let's do it!</li>
-      </ul>
-    </div>
-    <center>
-    <img src = "images/pitch3.png">
-    </center>
-    <a href="plotting.html">Let's go!</a>
+    <button id = "animationToggle" onclick="buttonHandler()">Stop animation</button>
+    <button onclick="functionPlot=0">Wiggle</button>
+    <button onclick="functionPlot=1">Spherical</button>
+    <br>
   </div>
-  <div class = "copyright">
-    started during dead week, winter 2015
+  <div id="3D">
   </div>
 </body>
 </html>

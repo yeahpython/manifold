@@ -1,30 +1,9 @@
-var mouse = {x: 0, y: 0};
 
-document.addEventListener('mousemove', function(e){ 
-    mouse.x = e.clientX || e.pageX; 
-    mouse.y = e.clientY || e.pageY 
-}, false);
-
-
-var scene = new THREE.Scene();
-var width = window.innerWidth;
-var height = window.innerHeight;
-var animating = true;
-//var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
-var camera = new THREE.PerspectiveCamera( 40, width/height, 0.1, 1000 );
-var renderer = new THREE.WebGLRenderer({alpha:true});
-renderer.setSize( width, height );
 
 var initialize = function () {
 	document.getElementById("3D").appendChild( renderer.domElement );
 }
-var offset = 7;
-var axesSize = 1;
 
-var linematerial = new THREE.LineBasicMaterial({
-	color: 0x000000,
-	linewidth: 10
-});
 
 var constructPlot = function(x,y,z) {
 	var plot = new THREE.Object3D();
@@ -46,12 +25,22 @@ var constructPlot = function(x,y,z) {
 	plot.translateZ(z);
 	return plot;
 }
-var leftPlot = constructPlot(offset, -offset, 0);
-var rightPlot = constructPlot(-offset, offset, 0);
 
 var myFunction = function(vector) {
-	return new THREE.Vector3(vector.x, vector.y, vector.z + Math.sin(vector.y));
+	if (functionPlot == 0) {
+		return new THREE.Vector3(vector.x, vector.y, vector.z + Math.sin(vector.y));
+	} else {
+		return spherical(vector);
+	}
 }
+
+var spherical = function(vector) {
+	z = vector.z * 0.4 + 5;
+	x = vector.x * 0.1;
+	y = vector.y * 0.1;
+	return new THREE.Vector3(z*Math.sin(x), z *Math.cos(x) * Math.sin(y), z*Math.cos(x) * Math.cos(y))
+}
+
 
 var fShow33 = function(callback, left, right) {
 	var domainPoints = new THREE.Geometry();
@@ -83,18 +72,17 @@ var fShow33 = function(callback, left, right) {
 	return {domain:domainPoints, range:rangePoints};
 }
 
-fShow33(myFunction, leftPlot, rightPlot);
-
 var bubbleSample = function(callback, left, right) {
-	var domainSurface = new THREE.SphereGeometry(5, 20, 20);
+	var domainSurface = new THREE.SphereGeometry(5, 32, 32);
 	//domainSurface.applyMatrix(new THREE.Matrix4().makeTranslation(left.position.x, left.position.y, left.position.z));
-	var material = new THREE.MeshBasicMaterial({color:0xff0000, wireframe:true});
+	//var material = new THREE.MeshBasicMaterial({color:0xff0000, wireframe:true});
+	var material = new THREE.MeshLambertMaterial({color:0xffffff});
 	var domainSphere = new THREE.Mesh( domainSurface, material );
 	scene.add( domainSphere );
 	THREE.SceneUtils.attach(domainSphere, scene, left);
 	domainSphere.position.set(0,0,0);
 
-	var rangeSurface = new THREE.SphereGeometry(5, 20, 20);
+	var rangeSurface = new THREE.SphereGeometry(5, 32, 32);
 	for (var i = 0; i < rangeSurface.vertices.length; i++) {
 		rangeSurface.vertices[i] = callback(rangeSurface.vertices[i]);
 	}
@@ -106,12 +94,6 @@ var bubbleSample = function(callback, left, right) {
 	return [domainSphere, rangeShape]
 }
 
-surfaces = bubbleSample(myFunction, leftPlot, rightPlot);
-
-var DOMAIN = 0;
-var RANGE = 1;
-
-var cursorSurface = new THREE.SphereGeometry(4,20,20);
 
 // Janky and assumes linearity of input -> translation mapping, but whatever.
 var updateMeshWithInput = function(mesh, vec) {
@@ -126,13 +108,6 @@ var updateMeshWithInput = function(mesh, vec) {
 	//mesh.position.set(x,y,z); // not working because I want to change the vertices, not the position.
 	mesh.geometry.verticesNeedUpdate = true;
 }
-
-// point camera
-camera.position.z = 10;
-camera.position.x = 20;
-camera.position.y = 20;
-camera.up.set(0,0,1);
-camera.lookAt(new THREE.Vector3(0,0,0));
 
 var buttonHandler = function(){
 	if (animating){
@@ -163,14 +138,80 @@ var render = function () {
 	inputY = (mouse.y / height) - 0.5
 	updateMeshWithInput(surfaces[DOMAIN], new THREE.Vector3( -10*inputX , 10 * inputX, -10 * inputY) );
 	updateRangeWithDomain(surfaces[RANGE], surfaces[DOMAIN], myFunction);
-	camera.position.x = 20 + 2 * Math.sin(t);
-	camera.position.y = 20 - 2 * Math.sin(t);
+	var cameraTarget = new THREE.Vector3(20 - 30 *inputX, 20 + inputX * 20, 10 - inputY * 20)
+	camera.position.lerp(cameraTarget, 0.01);
+	//camera.position.x = 20 + 2 * Math.sin(t);
+	//camera.position.y = 20 - 2 * Math.sin(t);
 	camera.lookAt(new THREE.Vector3(0,0,0));
 	if (animating) {
 		requestAnimationFrame( render );
 	}
 	renderer.render(scene, camera);
 };
+
+var mouse = {x: 0, y: 0};
+
+document.addEventListener('mousemove', function(e){ 
+    mouse.x = e.clientX || e.pageX; 
+    mouse.y = e.clientY || e.pageY 
+}, false);
+
+
+var scene = new THREE.Scene();
+var width = window.innerWidth - 20;
+var height = window.innerHeight - 50;
+var animating = true;
+//var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
+var camera = new THREE.PerspectiveCamera( 40, width/height, 0.1, 1000 );
+var renderer = new THREE.WebGLRenderer({alpha:true});
+renderer.setSize( width, height );
+
+var offset = 7;
+var axesSize = 1;
+
+var linematerial = new THREE.LineBasicMaterial({
+	color: 0x000000,
+	linewidth: 10
+});
+
+var leftPlot = constructPlot(offset, -offset, 0);
+var rightPlot = constructPlot(-offset, offset, 0);
+
+
+var functionPlot = 1;
+
+var light = new THREE.PointLight( 0xff0000, 1, 100 );
+light.position.set( 20, 20, 20 );
+scene.add( light );
+
+var light2 = new THREE.PointLight( 0x0000ff, 1, 100 );
+light2.position.set( 20, -20, 20 );
+scene.add( light2 );
+
+var light3 = new THREE.PointLight( 0xffff00, 1, 100 );
+light3.position.set( -20, 20, 20 );
+scene.add( light3 );
+
+fShow33(myFunction, leftPlot, rightPlot);
+
+surfaces = bubbleSample(myFunction, leftPlot, rightPlot);
+
+var DOMAIN = 0;
+var RANGE = 1;
+
+var cursorSurface = new THREE.SphereGeometry(10,32,32);
+var min = new THREE.Vector3(-4,-4,-4);
+var max = new THREE.Vector3(4,4,4);
+for (var i = 0; i < cursorSurface.vertices.length; i++) {
+	cursorSurface.vertices[i] = cursorSurface.vertices[i].clamp(min,max);
+}
+
+// point camera
+camera.position.z = 10;
+camera.position.x = 20;
+camera.position.y = 20;
+camera.up.set(0,0,1);
+camera.lookAt(new THREE.Vector3(0,0,0));
 
 
 var meshDictionary = new Object();
