@@ -15,9 +15,6 @@
 	//font-size: 20px;
 }
 
-ul li {
-	margin-bottom: 10px;
-}
 .copyright {
 	color: #666666;
 	text-align: center;
@@ -26,6 +23,13 @@ ul li {
 
 img {
 	max-width:100%;
+	display:block;
+	margin:0 auto;
+}
+
+canvas {
+	display:block;
+	margin:0 auto;
 }
 
 h1 {

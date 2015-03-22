@@ -1,7 +1,7 @@
 
 
 var initialize = function () {
-	document.getElementById("3D").appendChild( renderer.domElement );
+	document.getElementById("3D").appendChild(renderer.domElement );
 }
 
 
@@ -112,7 +112,7 @@ var updateMeshWithInput = function(mesh, vec) {
 var buttonHandler = function(){
 	if (animating){
 		animating = false;
-		document.getElementById("animationToggle").innerHTML = "Start animation";
+		document.getElementById("animationToggle").innerHTML = "Continue animation";
 	} else {
 		animating = true;
 		document.getElementById("animationToggle").innerHTML = "Stop animation";
@@ -134,8 +134,8 @@ var updateRangeWithDomain = function(range,domain,callback) {
 
 var render = function () {
 	var t = 0.002 * new Date().getTime();
-	inputX = (mouse.x / width) - 0.5;
-	inputY = (mouse.y / height) - 0.5
+	inputX = (mouse.x / $(window).width()) - 0.5;
+	inputY = (mouse.y / $(window).height()) - 0.5
 	updateMeshWithInput(surfaces[DOMAIN], new THREE.Vector3( -10*inputX , 10 * inputX, -10 * inputY) );
 	updateRangeWithDomain(surfaces[RANGE], surfaces[DOMAIN], myFunction);
 	var cameraTarget = new THREE.Vector3(20 - 30 *inputX, 20 + inputX * 20, 10 - inputY * 20)
@@ -158,8 +158,8 @@ document.addEventListener('mousemove', function(e){
 
 
 var scene = new THREE.Scene();
-var width = window.innerWidth - 20;
-var height = window.innerHeight - 50;
+var width = 1168;//window.innerWidth - 20;
+var height = 600;//window.innerHeight - 50;
 var animating = true;
 //var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
 var camera = new THREE.PerspectiveCamera( 40, width/height, 0.1, 1000 );
