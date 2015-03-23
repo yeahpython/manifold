@@ -109,16 +109,42 @@ var updateMeshWithInput = function(mesh, vec) {
 	mesh.geometry.verticesNeedUpdate = true;
 }
 
+var animating = true;
+
+var stopAnimation = function(){
+	animating = false;
+	document.getElementById("animationToggle").innerHTML = "Continue animation";
+}
+
 var buttonHandler = function(){
 	if (animating){
-		animating = false;
-		document.getElementById("animationToggle").innerHTML = "Continue animation";
+		stopAnimation();
 	} else {
 		animating = true;
 		document.getElementById("animationToggle").innerHTML = "Stop animation";
 		render();
 	}
 }
+
+var hashRespond = function(){
+	var hash = window.location.hash.substring(1); // hash part of url withou the first letter (#)
+    $("section").hide();
+    if (hash != "demo") {
+    	stopAnimation();
+    }
+    //document.getElementById("debug").innerHTML = hash;
+    
+    if (hash == "") {
+      $("#home").show();
+    } else {
+      $("#"+hash).show();
+    }
+}
+
+$( document ).ready(function() {
+	hashRespond();
+	$(window).on("hashchange", hashRespond);
+});
 
 var updateRangeWithDomain = function(range,domain,callback) {
 	range.geometry.dynamic = true;
@@ -132,6 +158,7 @@ var updateRangeWithDomain = function(range,domain,callback) {
 	range.geometry.verticesNeedUpdate = true;
 }
 
+
 var render = function () {
 	var t = 0.002 * new Date().getTime();
 	inputX = (mouse.x / $(window).width()) - 0.5;
@@ -143,6 +170,7 @@ var render = function () {
 	//camera.position.x = 20 + 2 * Math.sin(t);
 	//camera.position.y = 20 - 2 * Math.sin(t);
 	camera.lookAt(new THREE.Vector3(0,0,0));
+	
 	if (animating) {
 		requestAnimationFrame( render );
 	}
@@ -160,7 +188,6 @@ document.addEventListener('mousemove', function(e){
 var scene = new THREE.Scene();
 var width = 1168;//window.innerWidth - 20;
 var height = 600;//window.innerHeight - 50;
-var animating = true;
 //var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
 var camera = new THREE.PerspectiveCamera( 40, width/height, 0.1, 1000 );
 var renderer = new THREE.WebGLRenderer({alpha:true});
@@ -212,7 +239,7 @@ camera.position.x = 20;
 camera.position.y = 20;
 camera.up.set(0,0,1);
 camera.lookAt(new THREE.Vector3(0,0,0));
-
+//var windowResize = THREEx.WindowResize(renderer, camera)
 
 var meshDictionary = new Object();
 render();

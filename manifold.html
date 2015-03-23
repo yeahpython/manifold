@@ -7,8 +7,7 @@
     <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
     <meta name="description" content="">
     <meta name="author" content="">
-    <link rel="icon" href="http://getbootstrap.com/favicon.ico">
-
+    <link rel="icon" href="favicon.ico">
     <title>manifold</title>
 
     <!-- Bootstrap core CSS -->
@@ -177,7 +176,6 @@
           <div class = "row">
             <div class = "col">
               <h1>Functions from three dimensions to three dimensions</h1>
-              <small>Argh! Haven't worked out how to pause the rendering when the tab changes, yet.</small>
 
 
               <div class = "btn btn-default" id = "animationToggle" onclick="buttonHandler()">Pause animation</div>
@@ -206,11 +204,13 @@
       <section id="sketch">
         <img src="images/pitch3.png">
       </section>
+
+      <div id="debug" style = "color:red;"></div>
     </div>
 
     <!-- /.container -->
 
-
+    <script src="js/external/THREEx.WindowResize.js"></script>
     <!-- Bootstrap core JavaScript
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
