@@ -80,6 +80,7 @@ var bubbleSample = function(callback, left, right) {
 	var domainSphere = new THREE.Mesh( domainSurface, material );
 	scene.add( domainSphere );
 	THREE.SceneUtils.attach(domainSphere, scene, left);
+	
 	domainSphere.position.set(0,0,0);
 
 	var rangeSurface = new THREE.SphereGeometry(5, 32, 32);
@@ -234,9 +235,7 @@ for (var i = 0; i < cursorSurface.vertices.length; i++) {
 }
 
 // point camera
-camera.position.z = 10;
-camera.position.x = 20;
-camera.position.y = 20;
+camera.position.set = (10,20,20);
 camera.up.set(0,0,1);
 camera.lookAt(new THREE.Vector3(0,0,0));
 //var windowResize = THREEx.WindowResize(renderer, camera)
