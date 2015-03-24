@@ -5,6 +5,8 @@
 A free javascript library built on THREE.js (and jQuery??) that makes it 
 easier to create demos of linear algebra and multivariable calculus.
 
+The latest version of this project may be found at github.com/yeahpython/manifold
+
 */
 
 
@@ -37,7 +39,18 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 	manifold.board = function(id, width, height) {
 		var scene = new THREE.Scene();
 		var camera = new THREE.PerspectiveCamera( 75, width / height, 0.1, 1000 );
+
+		// fastest
+		//var renderer = new THREE.WebGLRenderer();
+
+		// fast
 		var renderer = new THREE.WebGLRenderer({alpha:true, antialias:true});
+
+		renderer.setClearColor(0xffffff, 1.0);
+
+		// slower, with rounded line caps
+		//var renderer = new THREE.CanvasRenderer({alpha:true, antialias:true});
+
 		renderer.setSize( width, height );
 		var box = document.getElementById(id);
 		box.appendChild( renderer.domElement );
@@ -128,7 +141,8 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 
 	var xAxisMaterial = new THREE.LineBasicMaterial({
 		color: 0xff0000,
-		linewidth: 10
+		linewidth: 10,
+		linecap:'round'
 	});
 
 	var yAxisMaterial = new THREE.LineBasicMaterial({
@@ -205,14 +219,19 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 	}
 
 	manifold.render = function() {
-		updateAll();
-		var inputX = (mouse.x / $(window).width()) - 0.5;
-		var inputY = (mouse.y / $(window).height()) - 0.5;
-		for (var i = 0; i < boards.length; i++) {
-			boards[i].renderer.render(boards[i].scene, boards[i].camera);
-			var cameraTarget = new THREE.Vector3(20 *inputX,20 * inputY, 30 );
-			boards[i].camera.position.lerp(cameraTarget, 0.01);
-			boards[i].camera.lookAt(new THREE.Vector3(0,0,0));
+
+		// lazy (as a programmer) solution for turning off animations.
+		// frames keep on going but I don't do anythin about it.
+		if (manifold.animating) {
+			updateAll();
+			var inputX = (mouse.x / $(window).width()) - 0.5;
+			var inputY = (mouse.y / $(window).height()) - 0.5;
+			for (var i = 0; i < boards.length; i++) {
+				boards[i].renderer.render(boards[i].scene, boards[i].camera);
+				var cameraTarget = new THREE.Vector3(20 *inputX,20 * inputY, 30 );
+				boards[i].camera.position.lerp(cameraTarget, 0.01);
+				boards[i].camera.lookAt(new THREE.Vector3(0,0,0));
+			}
 		}
 		requestAnimationFrame(manifold.render);
 	}
@@ -313,7 +332,7 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 		Leap.loop(function (frame) {
 		    if (frame.hands.length) {
 		    	p = frame.hands[0].palmPosition;
-				leapCursor3d.set(p[0], -p[2], p[1]).divideScalar(40);
+				leapCursor3d.set(p[0], -p[2], p[1] - 50).divideScalar(40);
 			}
 		});
 	}
@@ -365,7 +384,8 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 	texture.repeat.set( 30, 30 );
 
 	//var paper = new THREE.MeshLambertMaterial({color:0xffffff});
-	var paper = new THREE.MeshBasicMaterial({color:0xffffff, map:texture, transparent:true});
+	//var paper = new THREE.MeshBasicMaterial({color:0xffffff, map:texture, transparent:true});
+	var paper = new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:0.1});
 	//var paper = new THREE.MeshLambertMaterial({color:0xffffff, wireframe:true});
 
 
@@ -375,8 +395,8 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 	});
 
 	var cursorSurface = new THREE.SphereGeometry(6,100,100);
-	var min = new THREE.Vector3(-3,-3,-3);
-	var max = new THREE.Vector3(3,3,3);
+	var min = new THREE.Vector3(-1,-1,-1);
+	var max = new THREE.Vector3(1,1,1);
 	for (var i = 0; i < cursorSurface.vertices.length; i++) {
 		cursorSurface.vertices[i] = cursorSurface.vertices[i].clamp(min,max);
 	}
@@ -391,6 +411,9 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 		var inputY = (mouse.y / $(window).height()) - 0.5;
 		mouse3d.set( 10*inputX , -10 * inputY, 0);
 	}, false);
+
+
+	manifold.animating = true;
 
 	// Private Methods
 
@@ -409,7 +432,7 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 		}
 		var plot = new THREE.Object3D();
 		var axes = new THREE.Geometry();
-		axes.vertices.push(
+		/*axes.vertices.push(
 			new THREE.Vector3( -10, 0, 0 ),
 			new THREE.Vector3( 10, 0, 0 ),
 			new THREE.Vector3( 0, -10, 0 ),
@@ -418,6 +441,54 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 			new THREE.Vector3( 0, 0, 10 )
 		);
 		var line = new THREE.Line( axes, linematerial, THREE.LinePieces);
+		*/
+
+		axes.vertices.push(
+			//triple
+			new THREE.Vector3( -10, -10, -10 ),
+			new THREE.Vector3( 10, -10, -10 ),
+
+			new THREE.Vector3( -10, -10, -10 ),
+			new THREE.Vector3( -10, 10, -10 ),
+			new THREE.Vector3( -10, -10, -10 ),
+			new THREE.Vector3( -10, -10, 10 ),
+
+			// L-shape
+			new THREE.Vector3( 10, -10, -10 ),
+			new THREE.Vector3( 10, 10, -10 ),
+
+			new THREE.Vector3( 10, -10, -10 ),
+			new THREE.Vector3( 10, -10, 10 ),
+
+			// L-shape
+			new THREE.Vector3( -10, 10, -10 ),
+			new THREE.Vector3( 10, 10, -10 ),
+
+			new THREE.Vector3( -10, 10, -10 ),
+			new THREE.Vector3( -10, 10, 10 ),
+
+			// L-shape
+			new THREE.Vector3( -10, -10, 10 ),
+			new THREE.Vector3( 10, -10, 10 ),
+
+			new THREE.Vector3( -10, -10, 10 ),
+			new THREE.Vector3( -10, 10, 10 ),
+
+			// triple
+			new THREE.Vector3( -10, 10, 10 ),
+			new THREE.Vector3( 10, 10, 10 ),
+
+			new THREE.Vector3( 10, -10, 10 ),
+			new THREE.Vector3( 10, 10, 10 ),
+
+			new THREE.Vector3( 10, 10, -10 ),
+			new THREE.Vector3( 10, 10, 10 )
+
+
+
+		);
+		var line = new THREE.Line( axes, linematerial, THREE.LinePieces);
+
 		board.scene.add( line );
 		board.scene.add( plot );
 		THREE.SceneUtils.attach(line, board.scene, plot);

@@ -1,5 +1,5 @@
 var spherical = function(vector) {
-	z = vector.z * 0.5 + 5;
+	z = vector.z;
 	x = vector.x * 0.5;
 	y = vector.y * 0.5;
 	return new THREE.Vector3(z*Math.sin(x), z *Math.cos(x) * Math.sin(y), z*Math.cos(x) * Math.cos(y));
@@ -9,12 +9,19 @@ var identity = function(vector) {
 	return new THREE.Vector3().copy(vector);
 }
 
+var playPauseHander = function(){
+	manifold.animating = !manifold.animating;
+	document.getElementById("option").innerHTML = manifold.animating ? "Pause" : "Play";
+}
+
 var foo = function() {
 	var board = manifold.board("board", 800, 800);
 	var space_a = manifold.space3(board, new THREE.Vector3(-11,11,0));
 	var space_b = manifold.space3(board, new THREE.Vector3(11,11,0));
 	var space_c = manifold.space3(board, new THREE.Vector3(-11,-11,0));
 	var space_d = manifold.space3(board, new THREE.Vector3(11,-11,0));
+
+	//space_a.position.set(0,0,0);
 
 	var surface = manifold.surface("cube", space_a, board);
 	manifold.controlSurfacePositionWithCursor(surface);
@@ -32,9 +39,9 @@ var foo = function() {
 
 	var basis_4 = manifold.translateBasisWithFunction(basis_1, board.scene, space_a, identity);
 
-	//manifold.tryToControlInputWithLeap();
+	manifold.tryToControlInputWithLeap();
 
-
+	/*
 	// Prettification stuff.
 	//board.camera.position.set(0,0,30);
 	//board.camera.up.set(0,1,0);
@@ -50,6 +57,7 @@ var foo = function() {
 	var light3 = new THREE.PointLight( 0xffff00, 1, 100 );
 	light3.position.set( -20, 20, 20 );
 	board.scene.add( light3 );
+	*/
 
 	// Render loop
 	manifold.render(board);
