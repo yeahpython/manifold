@@ -60,13 +60,16 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 			renderer:renderer
 		}
 		boards.push(board);
+
+
 		return board;
 	}
 
 	// Adds an object representing three-dimensional space to the board.
 	// Adds axes by default, although this may change.
-	manifold.space3 = function(board, origin) {
-		return space(3, board, origin);
+	manifold.space3 = function(board, origin, spaceOption) {
+		//okay for spaceOption to be undefined
+		return space(3, board, origin, spaceOption);
 	}
 
 	// Returns an approximate Jacobian of function userFunc
@@ -108,10 +111,7 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 		if (type == "cube") {
 			// make a cube that moves around in the space according to user input
 			var mesh = new THREE.Mesh(cursorSurface.clone(), paper);
-			board.scene.add(mesh);
-			THREE.SceneUtils.attach(mesh, board.scene, space);
-			space.updateMatrixWorld();
-			mesh.position.set(0,0,0);
+			space.add(mesh);
 			return mesh;
 		} else {
 			throw "Unrecognized surface type";
@@ -122,11 +122,9 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 	// currently compatible with the following objects:
 	//
 	manifold.image = function(userFunc, object, space, board) {
-		var mesh = new THREE.Mesh(object.geometry.clone(), paper);
-		board.scene.add(mesh);
-		THREE.SceneUtils.attach(mesh, board.scene, space);
-		space.updateMatrixWorld();
-		mesh.position.set(0,0,0);
+		var mesh = object.clone();
+		mesh.geometry = object.geometry.clone();
+		space.add(mesh);
 		mesh.geometry.dynamic = true;
 		updateRules.push({
 			update:function(){
@@ -141,25 +139,24 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 
 	var xAxisMaterial = new THREE.LineBasicMaterial({
 		color: 0xff0000,
-		linewidth: 10,
+		linewidth: 2,
 		linecap:'round'
 	});
 
 	var yAxisMaterial = new THREE.LineBasicMaterial({
 		color: 0x00ff00,
-		linewidth: 10
+		linewidth: 2
 	});
 
 	var zAxisMaterial = new THREE.LineBasicMaterial({
 		color: 0x0000ff,
-		linewidth: 10
+		linewidth: 2
 	});
 
 	manifold.translateBasisWithFunction = function(basis, scene, space, userFunc) {
 		var basisCopy = basis.clone();// manifold.unitBasis(3, scene, space);
 		basisCopy.position = new THREE.Vector3();
-		scene.add(basisCopy);
-		THREE.SceneUtils.attach(basisCopy, scene, space);
+		space.add(basisCopy);
 
 		updateRules.push({
 			update:function(){
@@ -167,7 +164,68 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 			}
 		});
 		return basisCopy;
+	}
 
+
+
+
+	var gridMaterial = new THREE.LineBasicMaterial({color: 0xaaaaaa});
+
+
+
+	manifold.nearbyGridLines = function(scene, space) {
+		var gridLines = new THREE.Geometry();
+		var m = 1;
+		var gridSize = 1;
+		var cuts = 5;
+		var step = gridSize / cuts;
+		for (var i = -m; i <= m; i++) {
+			for (var j = -m; j <= m; j++) {
+				for (var k = -m; k <= m; k++) {
+					for (var s = 0; s < cuts; s++) {
+						gridLines.vertices.push(
+							new THREE.Vector3(i+s*step, j, k),
+							new THREE.Vector3(i+(s+1)*step, j, k),
+							new THREE.Vector3(i, j+s*step, k),
+							new THREE.Vector3(i, j+(s+1)*step, k),
+							new THREE.Vector3(i, j, k+s*step),
+							new THREE.Vector3(i, j, k+(s+1)*step)
+							);
+					}
+				}
+			}
+		}
+
+
+		var gridMesh = new THREE.Line( gridLines, gridMaterial, THREE.LinePieces);
+		gridMesh.geometry.dynamic = true;
+
+		space.add(gridMesh);
+
+		updateRules.push({
+			update:function() {
+				var f = 2*m + 1;
+				for (var i = 0; i < gridMesh.geometry.vertices.length; i+=2) {
+					// desired movement
+					var motion = new THREE.Vector3(0,0,0).copy(cursor).sub(gridMesh.geometry.vertices[i]);
+
+
+
+					motion.divideScalar(f);
+					// snap movement to the nearest multiple of 2m + 1
+					motion.x = Math.round(motion.x);
+					motion.y = Math.round(motion.y);
+					motion.z = Math.round(motion.z);
+					motion.multiplyScalar(f);
+
+					gridMesh.geometry.vertices[i].add(motion);
+					gridMesh.geometry.vertices[i+1].add(motion);
+				}
+				gridMesh.geometry.verticesNeedUpdate = true;
+			}
+		});
+
+		return gridMesh;
 	}
 
 	manifold.unitBasis = function(dimensions, scene, space) {
@@ -175,41 +233,36 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 			throw "Not dealing with less than three dimensions at the moment";
 		}
 
+		var basisLength = 5;
+
 		var basis = new THREE.Object3D();
 
 		var xUnit = new THREE.Geometry();
 		xUnit.vertices.push(
 			new THREE.Vector3( 0, 0, 0 ),
-			new THREE.Vector3( 5, 0, 0 )
+			new THREE.Vector3( basisLength, 0, 0 )
 		);
 		var i = new THREE.Line( xUnit, xAxisMaterial, THREE.LinePieces);
 
 		var yUnit = new THREE.Geometry();
 		yUnit.vertices.push(
 			new THREE.Vector3( 0, 0, 0 ),
-			new THREE.Vector3( 0, 5, 0 )
+			new THREE.Vector3( 0, basisLength, 0 )
 		);
 		var j = new THREE.Line( yUnit, yAxisMaterial, THREE.LinePieces);
 
 		var zUnit = new THREE.Geometry();
 		zUnit.vertices.push(
 			new THREE.Vector3( 0, 0, 0 ),
-			new THREE.Vector3( 0, 0, 5 )
+			new THREE.Vector3( 0, 0, basisLength )
 		);
 		var k = new THREE.Line( zUnit, zAxisMaterial, THREE.LinePieces);
 
-		scene.add(basis);
-		scene.add(i);
-		scene.add(j);
-		scene.add(k);
 
-		THREE.SceneUtils.attach(i, scene, basis);
-		THREE.SceneUtils.attach(j, scene, basis);
-		THREE.SceneUtils.attach(k, scene, basis);
-		THREE.SceneUtils.attach(basis, scene, space);
-
-		//basis.updateMatrixWorld();
-		basis.position.set(0,0,0);
+		space.add(basis);
+		basis.add(i);
+		basis.add(j);
+		basis.add(k);
 		return basis;
 	}
 
@@ -224,8 +277,8 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 		// frames keep on going but I don't do anythin about it.
 		if (manifold.animating) {
 			updateAll();
-			var inputX = (mouse.x / $(window).width()) - 0.5;
-			var inputY = (mouse.y / $(window).height()) - 0.5;
+			var inputX = cursor.x;
+			var inputY = cursor.y;
 			for (var i = 0; i < boards.length; i++) {
 				boards[i].renderer.render(boards[i].scene, boards[i].camera);
 				var cameraTarget = new THREE.Vector3(20 *inputX,20 * inputY, 30 );
@@ -325,6 +378,10 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 	var cursorControl = "mouse";
 
 	var cursor = new THREE.Vector3(0,0,0);
+	manifold.getCursor = function(){
+		return new THREE.Vector3(cursor);
+	}
+
 	var leapCursor3d = new THREE.Vector3(0,0,0);
 
 	manifold.tryToControlInputWithLeap = function() {
@@ -335,6 +392,33 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 				leapCursor3d.set(p[0], -p[2], p[1] - 50).divideScalar(40);
 			}
 		});
+	}
+
+	var pointCloudMaterial = new THREE.PointCloudMaterial({color:0x000000, size:0.3});
+
+	manifold.genericPointCloud = function(space, scene) {
+		points = new THREE.Geometry();
+		var m = 6;
+		for (var i = -m; i <= m; i+=2) {
+			for (var j = -m; j <= m; j+=2) {
+				for (var k = -m; k <=m; k+=2) {
+					var point = new THREE.Vector3(i,j,k);
+					points.vertices.push(space.localToWorld(point));
+				}
+			}
+		}
+		var pointCloud = new THREE.PointCloud(points, pointCloudMaterial);
+		space.add(pointCloud);
+		return pointCloud;
+	}
+
+	manifold.pointCloudImage = function(space, scene, pointCloud, userFunc) {
+		space.updateMatrixWorld();
+		var newPointCloud = new THREE.PointCloud(pointCloud.geometry.clone(), pointCloud.material);
+		for (var i = 0; i < newPointCloud.geometry.vertices.length; i++) {
+			newPointCloud.geometry.vertices[i] = userFunc(newPointCloud.geometry.vertices[i]);
+		}
+		space.add(newPointCloud);
 	}
 
 
@@ -409,7 +493,7 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 	    mouse.y = e.clientY || e.pageY;
 	    var inputX = (mouse.x / $(window).width()) - 0.5;
 		var inputY = (mouse.y / $(window).height()) - 0.5;
-		mouse3d.set( 10*inputX , -10 * inputY, 0);
+		mouse3d.set( 10*inputX , -10 * inputY, 5);
 	}, false);
 
 
@@ -426,75 +510,82 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 	puts the space in board at the given origin
 
 	*/
-	function space(dimension, board, origin) {
+	function space(dimension, board, origin, spaceOption) {
+		// okay for spaceOption to be undefined
+
 		if (dimension != 3) {
 			throw "Dimensions other than 3 not supported";
 		}
 		var plot = new THREE.Object3D();
 		var axes = new THREE.Geometry();
-		/*axes.vertices.push(
-			new THREE.Vector3( -10, 0, 0 ),
-			new THREE.Vector3( 10, 0, 0 ),
-			new THREE.Vector3( 0, -10, 0 ),
-			new THREE.Vector3( 0, 10, 0 ),
-			new THREE.Vector3( 0, 0, -10 ),
-			new THREE.Vector3( 0, 0, 10 )
-		);
-		var line = new THREE.Line( axes, linematerial, THREE.LinePieces);
-		*/
 
-		axes.vertices.push(
-			//triple
-			new THREE.Vector3( -10, -10, -10 ),
-			new THREE.Vector3( 10, -10, -10 ),
+		var line = undefined;
+		if (spaceOption == "axes") {
+			axes.vertices.push(
+				new THREE.Vector3( -10, 0, 0 ),
+				new THREE.Vector3( 10, 0, 0 ),
+				new THREE.Vector3( 0, -10, 0 ),
+				new THREE.Vector3( 0, 10, 0 ),
+				new THREE.Vector3( 0, 0, -10 ),
+				new THREE.Vector3( 0, 0, 10 )
+			);
+			line = new THREE.Line( axes, linematerial, THREE.LinePieces);
+		} else if (spaceOption == "box"){
+			axes.vertices.push(
+				//triple
+				new THREE.Vector3( -10, -10, -10 ),
+				new THREE.Vector3( 10, -10, -10 ),
 
-			new THREE.Vector3( -10, -10, -10 ),
-			new THREE.Vector3( -10, 10, -10 ),
-			new THREE.Vector3( -10, -10, -10 ),
-			new THREE.Vector3( -10, -10, 10 ),
+				new THREE.Vector3( -10, -10, -10 ),
+				new THREE.Vector3( -10, 10, -10 ),
+				new THREE.Vector3( -10, -10, -10 ),
+				new THREE.Vector3( -10, -10, 10 ),
 
-			// L-shape
-			new THREE.Vector3( 10, -10, -10 ),
-			new THREE.Vector3( 10, 10, -10 ),
+				// L-shape
+				new THREE.Vector3( 10, -10, -10 ),
+				new THREE.Vector3( 10, 10, -10 ),
 
-			new THREE.Vector3( 10, -10, -10 ),
-			new THREE.Vector3( 10, -10, 10 ),
+				new THREE.Vector3( 10, -10, -10 ),
+				new THREE.Vector3( 10, -10, 10 ),
 
-			// L-shape
-			new THREE.Vector3( -10, 10, -10 ),
-			new THREE.Vector3( 10, 10, -10 ),
+				// L-shape
+				new THREE.Vector3( -10, 10, -10 ),
+				new THREE.Vector3( 10, 10, -10 ),
 
-			new THREE.Vector3( -10, 10, -10 ),
-			new THREE.Vector3( -10, 10, 10 ),
+				new THREE.Vector3( -10, 10, -10 ),
+				new THREE.Vector3( -10, 10, 10 ),
 
-			// L-shape
-			new THREE.Vector3( -10, -10, 10 ),
-			new THREE.Vector3( 10, -10, 10 ),
+				// L-shape
+				new THREE.Vector3( -10, -10, 10 ),
+				new THREE.Vector3( 10, -10, 10 ),
 
-			new THREE.Vector3( -10, -10, 10 ),
-			new THREE.Vector3( -10, 10, 10 ),
+				new THREE.Vector3( -10, -10, 10 ),
+				new THREE.Vector3( -10, 10, 10 ),
 
-			// triple
-			new THREE.Vector3( -10, 10, 10 ),
-			new THREE.Vector3( 10, 10, 10 ),
+				// triple
+				new THREE.Vector3( -10, 10, 10 ),
+				new THREE.Vector3( 10, 10, 10 ),
 
-			new THREE.Vector3( 10, -10, 10 ),
-			new THREE.Vector3( 10, 10, 10 ),
+				new THREE.Vector3( 10, -10, 10 ),
+				new THREE.Vector3( 10, 10, 10 ),
 
-			new THREE.Vector3( 10, 10, -10 ),
-			new THREE.Vector3( 10, 10, 10 )
+				new THREE.Vector3( 10, 10, -10 ),
+				new THREE.Vector3( 10, 10, 10 )
 
 
 
-		);
-		var line = new THREE.Line( axes, linematerial, THREE.LinePieces);
+			);
+			line = new THREE.Line( axes, linematerial, THREE.LinePieces);
+		}
 
-		board.scene.add( line );
 		board.scene.add( plot );
-		THREE.SceneUtils.attach(line, board.scene, plot);
+
+		if (line) {
+			plot.add(line);
+			plot.axes = line;
+		}
 
 		plot.position.add(origin);
-		plot.axes = line;
 		return plot;
 	}
 
