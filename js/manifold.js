@@ -37,7 +37,7 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 	manifold.board = function(id, width, height) {
 		var scene = new THREE.Scene();
 		var camera = new THREE.PerspectiveCamera( 75, width / height, 0.1, 1000 );
-		var renderer = new THREE.WebGLRenderer({alpha:true});
+		var renderer = new THREE.WebGLRenderer({alpha:true, antialias:true});
 		renderer.setSize( width, height );
 		var box = document.getElementById(id);
 		box.appendChild( renderer.domElement );
@@ -79,7 +79,6 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 		}
 		updateRules.push({
 			update:function(){
-				var cursor = get3DCursor();
 				var m = jacobian(cursor);
 				for (var i = 0; i < basis.children.length; i++) {
 					newBasis.children[i].geometry.vertices[1].copy(basis.children[i].geometry.vertices[1]);
@@ -142,6 +141,21 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 		linewidth: 10
 	});
 
+	manifold.translateBasisWithFunction = function(basis, scene, space, userFunc) {
+		var basisCopy = basis.clone();// manifold.unitBasis(3, scene, space);
+		basisCopy.position = new THREE.Vector3();
+		scene.add(basisCopy);
+		THREE.SceneUtils.attach(basisCopy, scene, space);
+
+		updateRules.push({
+			update:function(){
+				basisCopy.position.copy(userFunc(cursor));
+			}
+		});
+		return basisCopy;
+
+	}
+
 	manifold.unitBasis = function(dimensions, scene, space) {
 		if (dimensions != 3) {
 			throw "Not dealing with less than three dimensions at the moment";
@@ -192,8 +206,13 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 
 	manifold.render = function() {
 		updateAll();
+		var inputX = (mouse.x / $(window).width()) - 0.5;
+		var inputY = (mouse.y / $(window).height()) - 0.5;
 		for (var i = 0; i < boards.length; i++) {
 			boards[i].renderer.render(boards[i].scene, boards[i].camera);
+			var cameraTarget = new THREE.Vector3(20 *inputX,20 * inputY, 30 );
+			boards[i].camera.position.lerp(cameraTarget, 0.01);
+			boards[i].camera.lookAt(new THREE.Vector3(0,0,0));
 		}
 		requestAnimationFrame(manifold.render);
 	}
@@ -265,7 +284,12 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 
 	// I don't want to build too much infrastructure outside of THREE.js, but I don't want to 
 	// simply hack into the existing THREE.js structure either.
-	var updateRules = [];
+	var updateRules = [
+	{
+		update:function() {
+			get3DCursor();
+		}
+	}];
 
 	manifold.controlSurfacePositionWithCursor = function(surface) {
 		updateRules.push(
@@ -273,16 +297,34 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 				update :
 				function()
 				{
-					updateMeshWithInput(surface, get3DCursor());
+					updateMeshWithInput(surface, cursor);
 				}
 			}
 		);
 	}
 
+	var cursorControl = "mouse";
+
+	var cursor = new THREE.Vector3(0,0,0);
+	var leapCursor3d = new THREE.Vector3(0,0,0);
+
+	manifold.tryToControlInputWithLeap = function() {
+		cursorControl = "leap";
+		Leap.loop(function (frame) {
+		    if (frame.hands.length) {
+		    	p = frame.hands[0].palmPosition;
+				leapCursor3d.set(p[0], -p[2], p[1]).divideScalar(40);
+			}
+		});
+	}
+
+
 	function get3DCursor(){
-		var inputX = (mouse.x / $(window).width()) - 0.5;
-		var inputY = (mouse.y / $(window).height()) - 0.5;
-		return new THREE.Vector3( 10*inputX , -10 * inputY, 0);
+		if (cursorControl == "leap") {
+			cursor.copy(leapCursor3d);
+		} else {
+			cursor.copy(mouse3d);
+		}
 	}
 
 	/*manifold.controlSurfacePositionWithCursor = function(surface) {
@@ -312,13 +354,19 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 
 
 	var updateIteration = 0;
-	// Public Properties
 
-	// Private Properties
 	var boards = [];
 
+
+	// load a texture, set wrap mode to repeat
+	var texture = THREE.ImageUtils.loadTexture( "texture.png" );
+	texture.wrapS = THREE.RepeatWrapping;
+	texture.wrapT = THREE.RepeatWrapping;
+	texture.repeat.set( 30, 30 );
+
 	//var paper = new THREE.MeshLambertMaterial({color:0xffffff});
-	var paper = new THREE.MeshLambertMaterial({color:0xffffff, wireframe:true});
+	var paper = new THREE.MeshBasicMaterial({color:0xffffff, map:texture, transparent:true});
+	//var paper = new THREE.MeshLambertMaterial({color:0xffffff, wireframe:true});
 
 
 	var linematerial = new THREE.LineBasicMaterial({
@@ -326,18 +374,22 @@ Column vectors computed from the Jacobian of a function at a point multiplied by
 		linewidth: 1
 	});
 
-	var cursorSurface = new THREE.SphereGeometry(10,32,32);
-	var min = new THREE.Vector3(-4,-4,-4);
-	var max = new THREE.Vector3(4,4,4);
+	var cursorSurface = new THREE.SphereGeometry(6,100,100);
+	var min = new THREE.Vector3(-3,-3,-3);
+	var max = new THREE.Vector3(3,3,3);
 	for (var i = 0; i < cursorSurface.vertices.length; i++) {
 		cursorSurface.vertices[i] = cursorSurface.vertices[i].clamp(min,max);
 	}
 
 	var mouse = {x: 0, y: 0};
+	var mouse3d = new THREE.Vector3(0,0,0);
 
 	document.addEventListener('mousemove', function(e){ 
 	    mouse.x = e.clientX || e.pageX; 
-	    mouse.y = e.clientY || e.pageY 
+	    mouse.y = e.clientY || e.pageY;
+	    var inputX = (mouse.x / $(window).width()) - 0.5;
+		var inputY = (mouse.y / $(window).height()) - 0.5;
+		mouse3d.set( 10*inputX , -10 * inputY, 0);
 	}, false);
 
 	// Private Methods
