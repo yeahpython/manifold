@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+  <head>
+      <script src="static/js/external/jquery-1.11.2.min.js"></script>
+      <script src="static/js/external/three.min.js"></script>
+      <script src="static/js/manifold.js"></script>
+      <script src="static/js/secondDemo.js"></script>
+      <script src="//js.leapmotion.com/leap-0.6.4.min.js"></script>
+      
+  </head>
+  <body onload="foo()">
+  	<center> <!-- mwahahaha -->
+  	<div style = "max-width: 400px">
+  	This is a demo of how we might be able to help explain Jacobians with interactivity.
+  	<br>
+  	<button onclick="playPauseHander()"><span id="option">Pause</span> animation</button>
+  	<br>
+  	Currently input mode: <span id="control">Mouse</span>
+
+    <div id = "debug"></div>
+  	</div>
+  	<br>
+    <div id = "board" style = "display:inline-block; border:solid #222222 1px; border-radius:5px"></div>
+    </center>
+  </body>
+</html>
