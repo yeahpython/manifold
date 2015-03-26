@@ -447,7 +447,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 
 	// load a texture, set wrap mode to repeat
-	var texture = THREE.ImageUtils.loadTexture( "texture.png" );
+	var texture = THREE.ImageUtils.loadTexture( "../static/texture.png" );
 	texture.wrapS = THREE.RepeatWrapping;
 	texture.wrapT = THREE.RepeatWrapping;
 	texture.repeat.set( 30, 30 );
