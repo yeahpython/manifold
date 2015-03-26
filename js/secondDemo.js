@@ -23,35 +23,35 @@ var foo = function() {
 
 	//space_a.position.set(0,0,0);
 
-	var surface = manifold.surface("cube", space_a, board);
+	var surface = manifold.surface("cube", space_a);
 	manifold.controlSurfacePositionWithCursor(surface);
 
 
-	var surface2 = manifold.image(spherical, surface, space_b, board);
+	var surface2 = manifold.image(spherical, surface, space_b);
 	/*var surface3 = manifold.image(function(input){
 		return new THREE.Vector3().copy(input).applyMatrix3(D_Spherical(manifold.getCursor()));
 	}), surface, space_b,*/
 
-	var basis_1 = manifold.unitBasis(3, board.scene, space_c);
+	var basis_1 = manifold.unitBasis(3, space_c);
 
 	var D_Spherical = manifold.approximateJacobian(spherical, 0.0001);
 
 	// this stuff is terrible
-	var basis_2 = manifold.transformBasisWithJacobian(basis_1, board.scene, space_d, space_c, D_Spherical);
+	var basis_2 = manifold.transformBasisWithJacobian(basis_1, space_d, space_c, D_Spherical);
 
-	var basis_3 = manifold.translateBasisWithFunction(basis_2, board.scene, space_b, spherical);
+	var basis_3 = manifold.translateBasisWithFunction(basis_2, space_b, spherical);
 
-	var basis_4 = manifold.translateBasisWithFunction(basis_1, board.scene, space_a, identity);
+	var basis_4 = manifold.translateBasisWithFunction(basis_1, space_a, identity);
 
-	//manifold.tryToControlInputWithLeap();
+	manifold.tryToControlInputWithLeap();
 
-	//var pointCloud1 = manifold.genericPointCloud(space_a, board.scene);
+	//var pointCloud1 = manifold.genericPointCloud(space_a);
 
-	//var pointCloud2 = manifold.pointCloudImage(space_b, board.scene, pointCloud1, spherical);
+	//var pointCloud2 = manifold.pointCloudImage(space_b, pointCloud1, spherical);
 
-	var sneakyGridLines = manifold.nearbyGridLines(board.scene, space_a);
+	var sneakyGridLines = manifold.nearbyGridLines(space_a);
 
-	var warpyGridLines = manifold.image(spherical, sneakyGridLines, space_b, board);
+	var warpyGridLines = manifold.image(spherical, sneakyGridLines, space_b);
 
 	/*
 	// Prettification stuff.
