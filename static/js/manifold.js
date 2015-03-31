@@ -77,7 +77,16 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		};
 	}
 
-	manifold.transformBasisWithJacobian = function(basis, space, oldSpace, jacobian) {
+
+	/*
+	  basis: the original basis that you want to transform
+	  space: the space in which you place the transformed basis
+	  jacobian: a function that takes 3D points as input and returns 3x3 matrices
+
+	  currently assumes that the jacobian should be determined by the cursor position by default,
+	  although odds are that at some point this will become an incorrect assumption.
+	*/
+	manifold.transformBasisWithJacobian = function(basis, space, jacobian) {
 		//var newBasis = basis.clone();
 		var newBasis = manifold.unitBasis(3, space);
 		for (var i = 0; i < basis.children.length; i++) {
@@ -267,7 +276,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			var inputY = cursor.y;
 			for (var i = 0; i < boards.length; i++) {
 				boards[i].renderer.render(boards[i].scene, boards[i].camera);
-				var cameraTarget = new THREE.Vector3(20 *inputX,20 * inputY, 30 );
+				var cameraTarget = new THREE.Vector3(20 *inputX,20 * inputY, 20 );
 				boards[i].camera.position.lerp(cameraTarget, 0.01);
 				boards[i].camera.lookAt(new THREE.Vector3(0,0,0));
 			}
@@ -414,6 +423,27 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		} else {
 			cursor.copy(mouse3d);
 		}
+	}
+
+	// Creates a THREE.js space as a child of a given space, tracking the position of the cursor at every frame
+	manifold.createCursorSpace = function(parent) {
+		var space = new THREE.Object3D();
+		parent.add(space);
+		updateRules.push(
+		{	update:function(){
+				space.position.copy(cursor);
+			}
+		});
+		return space;
+	}
+
+	manifold.imageOfSpace = function(userFunc, originalSpace, parent) {
+		var space = new THREE.Object3D();
+		parent.add(space);
+		updateRules.push({update:function(){
+			space.position.copy(userFunc(originalSpace.position));
+		}});
+		return space;
 	}
 
 	/*manifold.controlSurfacePositionWithCursor = function(surface) {

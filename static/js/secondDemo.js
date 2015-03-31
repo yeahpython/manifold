@@ -14,62 +14,45 @@ var playPauseHander = function(){
 	document.getElementById("option").innerHTML = manifold.animating ? "Pause" : "Play";
 }
 
+
+/*
+
+The interface still seems kind of messy. I'm tempted to turn a lot of these functions into private methods
+and instead have the library have public methods such as "VisualizeJacobian(function)"
+
+Also, introducing a language of control points makes sense. In the long run, I expect that we're not going
+to want everything to be controlled directly by the cursor.
+
+What do math teachers want? They probably want the function calls to match mathematics as closely as possible.
+
+Need a better idea of what the target usage is
+Things to teach:
+Dot products
+Orthogonality
+Null Space
+Column Space
+Linear transformations
+
+*/
 var foo = function() {
 	var board = manifold.board("board", window.innerWidth, 800);
-	var space_a = manifold.space3(board, new THREE.Vector3(-11,11,0), "axes");
-	var space_b = manifold.space3(board, new THREE.Vector3(11,11,0), "axes");
-	var space_c = manifold.space3(board, new THREE.Vector3(-11,-11,0), "box");
-	var space_d = manifold.space3(board, new THREE.Vector3(11,-11,0), "box");
-
-	//space_a.position.set(0,0,0);
-
+	var space_a = manifold.space3(board, new THREE.Vector3(-11,0,0), "axes");
+	var space_b = manifold.space3(board, new THREE.Vector3(11,0,0), "axes");
 	var surface = manifold.surface("cube", space_a);
 	manifold.controlSurfacePositionWithCursor(surface);
-
-
 	var surface2 = manifold.image(spherical, surface, space_b);
-	/*var surface3 = manifold.image(function(input){
-		return new THREE.Vector3().copy(input).applyMatrix3(D_Spherical(manifold.getCursor()));
-	}), surface, space_b,*/
-
-	var basis_1 = manifold.unitBasis(3, space_c);
-
+	var cursorSpace = manifold.createCursorSpace(space_a);
+	var cursorImageSpace = manifold.imageOfSpace(spherical, cursorSpace, space_b);
+	var basicBasis = manifold.unitBasis(3, cursorSpace);
 	var D_Spherical = manifold.approximateJacobian(spherical, 0.0001);
-
-	// this stuff is terrible
-	var basis_2 = manifold.transformBasisWithJacobian(basis_1, space_d, space_c, D_Spherical);
-
-	var basis_3 = manifold.translateBasisWithFunction(basis_2, space_b, spherical);
-
-	var basis_4 = manifold.translateBasisWithFunction(basis_1, space_a, identity);
-
-	manifold.tryToControlInputWithLeap();
-
+	var transformedBasis = manifold.transformBasisWithJacobian(basicBasis, cursorImageSpace, D_Spherical);
 	//var pointCloud1 = manifold.genericPointCloud(space_a);
-
 	//var pointCloud2 = manifold.pointCloudImage(space_b, pointCloud1, spherical);
-
 	var sneakyGridLines = manifold.nearbyGridLines(space_a);
-
 	var warpyGridLines = manifold.image(spherical, sneakyGridLines, space_b);
 
-	/*
-	// Prettification stuff.
-	//board.camera.position.set(0,0,30);
-	//board.camera.up.set(0,1,0);
-
-	var light = new THREE.PointLight( 0xff0000, 1, 100 );
-	light.position.set( 20, 20, 20 );
-	board.scene.add( light );
-
-	var light2 = new THREE.PointLight( 0x0000ff, 1, 100 );
-	light2.position.set( 20, -20, 20 );
-	board.scene.add( light2 );
-
-	var light3 = new THREE.PointLight( 0xffff00, 1, 100 );
-	light3.position.set( -20, 20, 20 );
-	board.scene.add( light3 );
-	*/
+	// User input
+	// manifold.tryToControlInputWithLeap();
 
 	// Render loop
 	manifold.render(board);
