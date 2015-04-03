@@ -228,7 +228,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			throw "Not dealing with less than three dimensions at the moment";
 		}
 
-		var basisLength = 5;
+		var basisLength = 1.5;
 
 		var basis = new THREE.Object3D();
 
@@ -276,7 +276,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			var inputY = cursor.y;
 			for (var i = 0; i < boards.length; i++) {
 				boards[i].renderer.render(boards[i].scene, boards[i].camera);
-				var cameraTarget = new THREE.Vector3(20 *inputX,20 * inputY, 20 );
+				var cameraTarget = new THREE.Vector3(6 *inputX,6 * inputY, 20 );
 				boards[i].camera.position.lerp(cameraTarget, 0.01);
 				boards[i].camera.lookAt(new THREE.Vector3(0,0,0));
 			}
@@ -370,7 +370,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		);
 	}
 
-	var cursorControl = "mouse";
+	manifold.cursorControl = "mouse";
 
 	var cursor = new THREE.Vector3(0,0,0);
 	manifold.getCursor = function(){
@@ -381,11 +381,11 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 	manifold.tryToControlInputWithLeap = function() {
 		document.getElementById("control").innerHTML = "Leap Motion Controller";
-		cursorControl = "leap";
+		manifold.cursorControl = "leap";
 		Leap.loop(function (frame) {
 		    if (frame.hands.length) {
 		    	p = frame.hands[0].palmPosition;
-				leapCursor3d.set(p[0], -p[2], p[1] - 50).divideScalar(40);
+				leapCursor3d.set(p[0], p[1]-100, p[2]+100).divideScalar(40);
 			}
 		});
 	}
@@ -418,7 +418,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	}
 
 	function get3DCursor(){
-		if (cursorControl == "leap") {
+		if (manifold.cursorControl == "leap") {
 			cursor.copy(leapCursor3d);
 		} else {
 			cursor.copy(mouse3d);

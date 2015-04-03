@@ -1,4 +1,5 @@
 var spherical = function(vector) {
+	//return new THREE.Vector3(vector.x, vector.y + Math.sin(vector.x), vector.z);
 	z = vector.z;
 	x = vector.x * 0.5;
 	y = vector.y * 0.5;
@@ -12,6 +13,22 @@ var identity = function(vector) {
 var playPauseHander = function(){
 	manifold.animating = !manifold.animating;
 	document.getElementById("option").innerHTML = manifold.animating ? "Pause" : "Play";
+}
+
+var toggleLeapControl = function(){
+	if (manifold.cursorControl == "leap") {
+		manifold.cursorControl = "mouse";
+		document.getElementById("control-button").innerHTML = "Control with Leap Motion";
+		document.getElementById("control").innerHTML = "Mouse";
+	} else {
+		if (!manifold.leapIntialized) {
+			manifold.leapIntialized = true;
+			manifold.tryToControlInputWithLeap();
+		}
+		manifold.cursorControl = "leap";
+		document.getElementById("control-button").innerHTML = "Control with Mouse";
+		document.getElementById("control").innerHTML = "Leap Motion";
+	}
 }
 
 
@@ -52,7 +69,7 @@ var foo = function() {
 	var warpyGridLines = manifold.image(spherical, sneakyGridLines, space_b);
 
 	// User input
-	// manifold.tryToControlInputWithLeap();
+	//manifold.tryToControlInputWithLeap();
 
 	// Render loop
 	manifold.render(board);
