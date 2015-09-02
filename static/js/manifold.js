@@ -186,8 +186,9 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	var gridMaterial = new THREE.LineBasicMaterial({
 		color: 0xaaaaaa,
 		vertexColors: THREE.VertexColors,
-		//blending: THREE.AdditiveBlending,
-		depthWrite:false,
+		transparent: true,
+		blending: THREE.AdditiveBlending,
+		//depthWrite:false,
 	});
 
 	/*gridMaterial.blending = THREE.CustomBlending;
@@ -197,7 +198,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	gridMaterial.needsUpdate = true;*/
 
 	manifold.controlPoint = function(space) {
-		var cursorSurface = new THREE.SphereGeometry(0.5,100,100);
+		var cursorSurface = new THREE.SphereGeometry(2.5, 100, 100);
 		var funMesh = new THREE.Mesh(cursorSurface, paper2);
 		space.add(funMesh);
 		funMesh.position.set(2,2,2);
@@ -562,12 +563,18 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	//var paper = new THREE.MeshLambertMaterial({color:0xffffff});
 	//var paper = new THREE.MeshBasicMaterial({color:0xffffff, map:texture, transparent:true});
 	var paper = new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.1});
-	var paper2 = new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.3});
+	var paper2 = new THREE.MeshBasicMaterial({
+		color:0xffffff,
+		transparent:true,
+		opacity:0.3,
+		blending: THREE.AdditiveBlending,
+		depthWrite:false,
+	});
 	//var paper = new THREE.MeshLambertMaterial({color:0xffffff, wireframe:true});
 
 
 	var linematerial = new THREE.LineBasicMaterial({
-		color: 0x333333,
+		color: 0xffffff,
 		linewidth: 4
 	});
 

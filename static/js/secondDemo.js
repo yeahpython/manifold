@@ -139,7 +139,7 @@ var foo = function() {
 			var object_intersects = raycaster.intersectObjects(manifold.controlPoints);
 			if (object_intersects.length > 0) {
 				object_intersects[0].object.material.color.set(0xffff00);
-				object_intersects[0].object.material.opacity = 0.5;
+				object_intersects[0].object.material.opacity = 0.1;
 				// plane.position.copy(object_intersects[0].object.position);
 				// console.log(plane.position);
 				plane.position.setFromMatrixPosition( object_intersects[0].object.matrixWorld );
