@@ -56,9 +56,6 @@ var toggleLeapControl = function(){
 The interface still seems kind of messy. I'm tempted to turn a lot of these functions into private methods
 and instead have the library have public methods such as "VisualizeJacobian(function)"
 
-Also, introducing a language of control points makes sense. In the long run, I expect that we're not going
-to want everything to be controlled directly by the cursor.
-
 What do math teachers want? They probably want the function calls to match mathematics as closely as possible.
 
 Need a better idea of what the target usage is
@@ -87,36 +84,26 @@ var foo = function() {
 	var space_a = manifold.space3(board, new THREE.Vector3(-11,0,0), "axes");
 	var space_b = manifold.space3(board, new THREE.Vector3(11,0,0), "axes");
 
+	var controlPoint = manifold.controlPoint(board, space_a);
 
 	/*
 	// Add a surface that is mapped through the function
 	var surface = manifold.surface("cube", space_a);
 	manifold.controlSurfacePositionWithCursor(surface);
 	var surface2 = manifold.image(spherical, surface, space_b);
+	// manifold.controlSurfacePositionWithControlPoint(surface, controlPoint);
 	*/
-	var controlPoint = manifold.controlPoint(board, space_a);
 
-	var cursorSpace = manifold.createCursorSpace(space_a);
-	var cursorImageSpace = manifold.imageOfSpace(spherical, cursorSpace, space_b);
-	var basicBasis = manifold.unitBasis(3, cursorSpace);
+	var tangentSpace = manifold.createTangentSpace(space_a, controlPoint);
+	var basicBasis = manifold.addUnitBasis(3, tangentSpace);
 
 	// How can I make Jacobian operations automatic?
 	var D_Spherical = manifold.approximateJacobian(spherical, 0.0001);
-	var transformedBasis = manifold.transformBasisWithJacobian(basicBasis, cursorImageSpace, D_Spherical);
-	//var pointCloud1 = manifold.genericPointCloud(space_a);
-	//var pointCloud2 = manifold.pointCloudImage(space_b, pointCloud1, spherical);
-	//
+	var transformedTangentSpace = manifold.warpTangentSpaceWithJacobian(tangentSpace, space_b, D_Spherical, spherical, controlPoint);
+	var jacobianMatrixDisplay = manifold.showJacobian(D_Spherical, controlPoint);
 
-	var jacobianMatrixDisplay = manifold.showJacobian(D_Spherical);
-
-	var sneakyGridLines = manifold.nearbyGridLines(space_a);
+	var sneakyGridLines = manifold.nearbyGridLines(space_a, controlPoint);
 	var warpyGridLines = manifold.image(spherical, sneakyGridLines, space_b, true);
-	// manifold.controlSurfacePositionWithControlPoint(surface, controlPoint);
 
-	// Selects the first control point that has been added for use as the cursor
-	manifold.tryToControlInputWithSomeControlPoint();
-	//manifold.tryToControlInputWithLeap();
-
-	// Render loop
 	manifold.render(board);
 };

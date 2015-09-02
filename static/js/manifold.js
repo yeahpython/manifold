@@ -162,6 +162,32 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	};
 
 
+	manifold.warpTangentSpaceWithJacobian = function(originalSpace, targetParentSpace, jacobian, f, controlPoint) {
+		var newSpace = originalSpace.clone();
+
+		// CAREFUL: Setting properties like rotation and position will no longer affect the space.
+		newSpace.matrixAutoUpdate = false;
+
+		targetParentSpace.add(newSpace);
+		updateRules.push({
+			update: function(){
+				// newSpace.position.copy(controlPoint.position);
+				// copy over local transformation
+				var m = jacobian(controlPoint.position);
+				for (var i = 0; i < 3; i++) {
+					for (var j = 0; j < 3; j++) {
+						newSpace.matrix.elements[4 * i + j] = m.elements[3 * i + j];
+					}
+				}
+				newSpace.matrix.setPosition(f(controlPoint.position));
+
+				//newSpace.rotation.setFromRotationMatrix()
+				newSpace.matrixWorldNeedsUpdate = true;
+			}
+		});
+		return newSpace;
+	}
+
 	/*
 	  basis: the original basis that you want to transform
 	  space: the space in which you place the transformed basis
@@ -170,15 +196,14 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	  currently assumes that the jacobian should be determined by the cursor position by default,
 	  although odds are that at some point this will become an incorrect assumption.
 	*/
-	manifold.transformBasisWithJacobian = function(basis, space, jacobian) {
-		//var newBasis = basis.clone();
-		var newBasis = manifold.unitBasis(3, space);
+	manifold.transformBasisWithJacobian = function(basis, space, jacobian, controlPoint) {
+		var newBasis = manifold.addUnitBasis(3, space);
 		for (var i = 0; i < basis.children.length; i++) {
 			newBasis.children[i].geometry.dynamic = true;
 		}
 		updateRules.push({
 			update:function(){
-				var m = jacobian(cursor);
+				var m = jacobian(controlPoint.position);
 				for (var i = 0; i < basis.children.length; i++) {
 					for (var j = 0; j < newBasis.children[i].geometry.vertices.length; j++) {
 						newBasis.children[i].geometry.vertices[j].copy(basis.children[i].geometry.vertices[j]);
@@ -192,7 +217,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	};
 
 	// Shows the matrix of values in the jacobian.
-	manifold.showJacobian = function(jacobian) {
+	manifold.showJacobian = function(jacobian, controlPoint) {
 		var matrixBox = $("<div/>")
 			.html("jacobian matrix appears here")
 			.attr("id", "jacobian_matrix")
@@ -210,7 +235,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		updateRules.push({
 			update: function() {
 				matrixBox.html("jacobian matrix:<br>");
-				var m = jacobian(cursor);
+				var m = jacobian(controlPoint.position);
 				var M = m.toArray();
 				var brackets = $("<div/>")
 					.css({
@@ -236,14 +261,6 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 						column.append("<br>");
 					}
 				}
-
-				/*for (var i = 0; i < 3; i++) {
-					for (var j = 0; j < 3; j++) {
-						matrixBox.append(M[i + j * 3].toFixed(2));
-						matrixBox.append(" ");
-					}
-					matrixBox.append("<br>")
-				}*/
 			}
 		});
 	}
@@ -287,6 +304,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		return mesh;
 	};
 
+
 	manifold.translateBasisWithFunction = function(basis, space, userFunc) {
 		var basisCopy = basis.clone();
 		basisCopy.position = new THREE.Vector3();
@@ -300,6 +318,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		return basisCopy;
 	};
 
+
 	manifold.controlPoint = function(board, space) {
 		var cursorSurface = new THREE.SphereGeometry(2.5, 100, 100);
 		var funMesh = new THREE.Mesh(cursorSurface, controlPointMaterial);
@@ -308,7 +327,6 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		manifold.controlPoints.push(funMesh);
 
 
-		//mouse = {x:0, y:0};
 		var selection = null;
 		var plane = new THREE.Mesh(
 			new THREE.PlaneBufferGeometry(500, 500, 8, 8),
@@ -335,13 +353,12 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				offset.copy(selection.position);
 				offset.sub(plane_intersects[0].point);
 			}
-			//document.getElementById("debug").innerHTML = "detected click on " + intersects.length + " objects";
-
 		}, false);
 
 
 		document.addEventListener('mousemove', function (event) {
-			// code adapted from https://www.script-tutorials.com/webgl-with-three-js-lesson-10/
+			// code adapted from this tutorial for dragging and dropping objects:
+			// https://www.script-tutorials.com/webgl-with-three-js-lesson-10/
 			event.preventDefault();
 
 			// Get mouse position
@@ -387,7 +404,9 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		return funMesh;
 	};
 
-	manifold.nearbyGridLines = function(space) {
+	// controlPoint should be an Object3D with a position where
+	// we want to center the gridlines.
+	manifold.nearbyGridLines = function(space, controlPoint) {
 		var gridLines = new THREE.Geometry();
 		var m = 1;
 		var gridSize = 1;
@@ -418,11 +437,11 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		updateRules.push({
 			update: function() {
 				var f = 2 * m + 1;
-				// Move each line segment to the position nearest to the cursor
+				// Move each line segment to the position nearest to the controlPoint
 				// with the constraint that the line segment is only allowed to
 				// occupy a lattice of locations
 				for (var i = 0; i < gridMesh.geometry.vertices.length; i+=2) {
-					var motion = new THREE.Vector3(0,0,0).copy(cursor).sub(gridMesh.geometry.vertices[i]);
+					var motion = new THREE.Vector3(0,0,0).copy(controlPoint.position).sub(gridMesh.geometry.vertices[i]);
 					var t = Math.max(0, 2 - 1.5 * motion.length());
 					t = Math.min(1, t);
 					var color = new THREE.Color( 0xffffff );
@@ -452,7 +471,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		return gridMesh;
 	};
 
-	manifold.unitBasis = function(dimensions, space) {
+	manifold.addUnitBasis = function(dimensions, space) {
 		if (dimensions != 3) {
 			throw "Not dealing with less than three dimensions at the moment";
 		}
@@ -593,13 +612,14 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		space.add(newPointCloud);
 	};
 
-	// Creates a THREE.js space as a child of a given space, tracking the position of the cursor at every frame
-	manifold.createCursorSpace = function(parent) {
+	// Creates a THREE.js space as a child of a given space, with a position that follows the controlPoint at every frame.
+	manifold.createTangentSpace = function(parent, controlPoint) {
+		// controlPoint should be an object with a Vector3 position member.
 		var space = new THREE.Object3D();
 		parent.add(space);
 		updateRules.push(
 		{	update:function(){
-				space.position.copy(cursor);
+				space.position.copy(controlPoint.position);
 			}
 		});
 		return space;
