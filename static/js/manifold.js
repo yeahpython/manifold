@@ -6,13 +6,51 @@ A free javascript library built on THREE.js that makes it
 easier to create demos of linear algebra and multivariable calculus.
 
 The latest version of this project may be found at github.com/yeahpython/manifold
-
 */
 
-
-/* (Uh, this is a 'self-executing anonymous function' that helps ensure that
-    I can use private and publics methods and variables.)*/
 (function(manifold, $, THREE, undefined){
+
+	var xAxisMaterial = new THREE.LineBasicMaterial({
+		color: 0xff0000,
+		linewidth: 2
+	});
+
+	var yAxisMaterial = new THREE.LineBasicMaterial({
+		color: 0x00ff00,
+		linewidth: 2
+	});
+
+	var zAxisMaterial = new THREE.LineBasicMaterial({
+		color: 0x0000ff,
+		linewidth: 2
+	});
+
+	var linematerial = new THREE.LineBasicMaterial({
+		color: 0xffffff,
+		linewidth: 4
+	});
+
+	var boards = [];
+	manifold.controlPoints = [];
+
+	var surfaceMaterial = new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.1});
+	var controlPointMaterial = new THREE.MeshBasicMaterial({
+		color:0xffffff,
+		transparent:true,
+		opacity:0.3,
+		blending: THREE.AdditiveBlending,
+		depthWrite:false
+	});
+	var mouse = {x: 0, y: 0};
+	var mouse3d = new THREE.Vector3(0,0,0);
+
+	var cursorSurface = new THREE.SphereGeometry(6,100,100);
+	var min = new THREE.Vector3(-1.5,-1.5,-1.5);
+	var max = new THREE.Vector3(1.5,1.5,1.5);
+	for (var i = 0; i < cursorSurface.vertices.length; i++) {
+		cursorSurface.vertices[i] = cursorSurface.vertices[i].clamp(min,max);
+	}
+
 
 	// Public Methods
 	/*
@@ -26,8 +64,6 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	   height: height in pixels of the board
 	*/
 	manifold.board = function(id, width, height) {
-
-
 		var scene = new THREE.Scene();
 		var camera = new THREE.PerspectiveCamera( 30, width / height, 0.1, 1000 );
 		camera.position.setZ(40);
@@ -121,7 +157,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	manifold.surface = function(type, space) {
 		if (type == "cube") {
 			// make a cube that moves around in the space according to user input
-			var mesh = new THREE.Mesh(cursorSurface.clone(), paper);
+			var mesh = new THREE.Mesh(cursorSurface.clone(), surfaceMaterial);
 			space.add(mesh);
 			return mesh;
 		} else {
@@ -158,21 +194,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		return mesh;
 	};
 
-	var xAxisMaterial = new THREE.LineBasicMaterial({
-		color: 0xff0000,
-		linewidth: 2,
-		linecap:'round'
-	});
 
-	var yAxisMaterial = new THREE.LineBasicMaterial({
-		color: 0x00ff00,
-		linewidth: 2
-	});
-
-	var zAxisMaterial = new THREE.LineBasicMaterial({
-		color: 0x0000ff,
-		linewidth: 2
-	});
 
 	manifold.translateBasisWithFunction = function(basis, space, userFunc) {
 		var basisCopy = basis.clone();
@@ -191,8 +213,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		color: 0xaaaaaa,
 		vertexColors: THREE.VertexColors,
 		transparent: true,
-		blending: THREE.AdditiveBlending,
-		//depthWrite:false,
+		blending: THREE.AdditiveBlending
 	});
 
 	/*gridMaterial.blending = THREE.CustomBlending;
@@ -203,7 +224,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 	manifold.controlPoint = function(board, space) {
 		var cursorSurface = new THREE.SphereGeometry(2.5, 100, 100);
-		var funMesh = new THREE.Mesh(cursorSurface, paper2);
+		var funMesh = new THREE.Mesh(cursorSurface, controlPointMaterial);
 		space.add(funMesh);
 		funMesh.position.set(2,2,2);
 		manifold.controlPoints.push(funMesh);
@@ -290,7 +311,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 
 		return funMesh;
-	}
+	};
 
 	manifold.nearbyGridLines = function(space) {
 		var gridLines = new THREE.Geometry();
@@ -322,25 +343,14 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 		updateRules.push({
 			update: function() {
-				var f = 2*m + 1;
-				document.getElementById("debug").innerHTML = "";
-				var motions = 0;
+				var f = 2 * m + 1;
+				// Move each line segment to the position nearest to the cursor
+				// with the constraint that the line segment is only allowed to
+				// occupy a lattice of locations
 				for (var i = 0; i < gridMesh.geometry.vertices.length; i+=2) {
-					// desired movement
 					var motion = new THREE.Vector3(0,0,0).copy(cursor).sub(gridMesh.geometry.vertices[i]);
-
-					var t = motion.length();
-					//document.getElementById("debug").innerHTML = "gridMesh.geometry.vertices[" + i + "].x: " + gridMesh.geometry.vertices[i].x + "<br>";
-					t *= 0.5;
-					t = Math.max(0, 2 - 3 * t);
+					var t = Math.max(0, 2 - 1.5 * motion.length());
 					t = Math.min(1, t);
-					/*
-					if (t < 1) {
-						t = 1;
-					}
-					else {
-						t = 0;
-					}*/
 					var color = new THREE.Color( 0xffffff );
 					color.setRGB(t,t,t);
 					gridMesh.geometry.colors[i] = color;
@@ -356,11 +366,6 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 					motion.y = Math.round(motion.y);
 					motion.z = Math.round(motion.z);
 					motion.multiplyScalar(f);
-
-					if (motion.x != 0) {
-						motions += 1;
-					}
-
 					gridMesh.geometry.vertices[i].add(motion);
 					gridMesh.geometry.vertices[i+1].add(motion);
 
@@ -371,7 +376,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		});
 
 		return gridMesh;
-	}
+	};
 
 	manifold.unitBasis = function(dimensions, space) {
 		if (dimensions != 3) {
@@ -385,41 +390,36 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		var xUnit = new THREE.Geometry();
 		xUnit.vertices.push(
 			new THREE.Vector3( 0, 0, 0 ),
-			new THREE.Vector3( basisLength, 0, 0 )
-		);
+			new THREE.Vector3( basisLength, 0, 0 ));
 		var i = new THREE.Line( xUnit, xAxisMaterial, THREE.LinePieces);
 
 		var yUnit = new THREE.Geometry();
 		yUnit.vertices.push(
 			new THREE.Vector3( 0, 0, 0 ),
-			new THREE.Vector3( 0, basisLength, 0 )
-		);
+			new THREE.Vector3( 0, basisLength, 0 ));
 		var j = new THREE.Line( yUnit, yAxisMaterial, THREE.LinePieces);
 
 		var zUnit = new THREE.Geometry();
 		zUnit.vertices.push(
 			new THREE.Vector3( 0, 0, 0 ),
-			new THREE.Vector3( 0, 0, basisLength )
-		);
+			new THREE.Vector3( 0, 0, basisLength ));
 		var k = new THREE.Line( zUnit, zAxisMaterial, THREE.LinePieces);
-
 
 		space.add(basis);
 		basis.add(i);
 		basis.add(j);
 		basis.add(k);
 		return basis;
-	}
+	};
 
-	// draws a line between two spaces, with text showing label over it.
+	// Draws a line between two spaces, with text showing label over it.
 	manifold.arrow = function(source, target, label) {
-
+		// Not written yet.
 	};
 
 
 
 	manifold.render = function() {
-
 		// lazy (as a programmer) solution for turning off animations.
 		// frames keep on going but I don't do anythin about it.
 		if (manifold.animating) {
@@ -438,72 +438,15 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	};
 
 	function updateAll() {
-		// future: sort according to dependencies
-		// future: find redundant updates.
+		// Does not sort according to dependencies. This should be okay
+		// because updateRules should be added in topological order for
+		// noew
+		// TODO: Detect and skip redundant updates.
 		for (var i = 0; i < updateRules.length; i++) {
 			updateRules[i].update();
 		}
-	};
-
-	/*
-	function updateAll() {
-		// The right thing to do is to do a topological sort of everything based on dependencies and do them in order.
-		// I'm probably not going to do that...
-		updateIteration++;
-		var l = boards.length;
-		for (var i = 0; i < l; i++) {
-			enforceUpdate(boards[i].scene);
-		}
 	}
 
-	function enforceUpdate(object) {
-		// recurse through the children, updating everything!
-
-		// Right now, everything is tree-shaped, so updateIteration doesn't really matter.
-
-		// if it doesn't have an updateRule, give it one. Its children might have updateRules.
-		if (object.updateRule == undefined) {
-			object.updateRule = {};
-		}
-
-		if (object.updateRule.lastUpdate == updateIteration) {
-			return;
-		}
-
-		if (object.updateRule.lastSearch == updateIteration) {
-			// We've really screwed up, and there's a cyclic dependency.
-			throw "Error: Cyclic dependency detected";
-		}
-
-		object.updateRule.lastSearch = updateIteration;
-
-		for (var i = 0; i < object.children.length; i++) {
-			enforceUpdate(object.children[i]);
-		}
-
-		if (object.updateRule.position != undefined) {
-			inputX = (mouse.x / $(window).width()) - 0.5;
-			inputY = (mouse.y / $(window).height()) - 0.5;
-			updateMeshWithInput(object, new THREE.Vector3( 10*inputX , -10 * inputY, 0) );
-		}
-
-		if (object.updateRule.surface != undefined) {
-
-		}
-
-		object.updateRule.lastUpdate = updateIteration;
-	}*/
-
-	// This thing looks like it's going to become a huge series of things that depend on each other.
-	// I want to make it automatic, so that the user can just declare what depends on what, and have
-	// everything work out visually.
-
-	// I also want it to be modular, because I don't know what exactly depends on what.
-
-	// I also need this thing to know when something doesn't need to be changed.
-
-	// I don't want to build too much infrastructure outside of THREE.js, but I don't want to
-	// simply hack into the existing THREE.js structure either.
 	var updateRules = [
 	{
 		update:function() {
@@ -521,7 +464,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				}
 			}
 		);
-	}
+	};
 
 	manifold.cursorControl = "mouse";
 
@@ -585,7 +528,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		} else {
 			console.log("didn't know what to do to with cursorControl");
 		}
-	};
+	}
 
 	// Creates a THREE.js space as a child of a given space, tracking the position of the cursor at every frame
 	manifold.createCursorSpace = function(parent) {
@@ -608,19 +551,8 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		return space;
 	};
 
-	/*manifold.controlSurfacePositionWithCursor = function(surface) {
-		// Rig things up so that every time we need to compute geometry of this surface,
-		// we use the mouseInput
-		if (surface.updateRule == undefined) {
-			surface.updateRule = {};
-		}
-		surface.updateRule.position = function() {
-			inputX = (mouse.x / $(window).width()) - 0.5;
-			inputY = (mouse.y / $(window).height()) - 0.5;
-			updateMeshWithInput(surface.mesh, new THREE.Vector3( -10*inputX , 10 * inputX, -10 * inputY) );
-		};
-	}*/
-
+	// This function moves a mesh around per-vertex instead of moving the
+	// overall position.
 	function updateMeshWithInput(mesh, vec) {
 		mesh.geometry.dynamic = true;
 		if (mesh.geometry.vertices.length == cursorSurface.vertices.length) {
@@ -633,49 +565,11 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		mesh.geometry.verticesNeedUpdate = true;
 	}
 
-	var updateIteration = 0;
-
-	var boards = [];
-	manifold.controlPoints = [];
-
-
-	// load a texture, set wrap mode to repeat
-	var texture = THREE.ImageUtils.loadTexture( "../static/texture.png" );
-	texture.wrapS = THREE.RepeatWrapping;
-	texture.wrapT = THREE.RepeatWrapping;
-	texture.repeat.set( 30, 30 );
-
-	//var paper = new THREE.MeshLambertMaterial({color:0xffffff});
-	//var paper = new THREE.MeshBasicMaterial({color:0xffffff, map:texture, transparent:true});
-	var paper = new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.1});
-	var paper2 = new THREE.MeshBasicMaterial({
-		color:0xffffff,
-		transparent:true,
-		opacity:0.3,
-		blending: THREE.AdditiveBlending,
-		depthWrite:false,
-	});
-	//var paper = new THREE.MeshLambertMaterial({color:0xffffff, wireframe:true});
-
-
-	var linematerial = new THREE.LineBasicMaterial({
-		color: 0xffffff,
-		linewidth: 4
-	});
-
-	var cursorSurface = new THREE.SphereGeometry(6,100,100);
-	var min = new THREE.Vector3(-1.5,-1.5,-1.5);
-	var max = new THREE.Vector3(1.5,1.5,1.5);
-	for (var i = 0; i < cursorSurface.vertices.length; i++) {
-		cursorSurface.vertices[i] = cursorSurface.vertices[i].clamp(min,max);
-	}
-
-	var mouse = {x: 0, y: 0};
-	var mouse3d = new THREE.Vector3(0,0,0);
 
 	document.addEventListener('mousemove', function(e){
-	    var inputX = e.clientX || e.pageX;
-	    var inputY = e.clientY || e.pageY;
+	    // TODO: investigate this oddness
+	    // var inputX = e.clientX || e.pageX;
+	    // var inputY = e.clientY || e.pageY;
 	    var inputX = e.clientX;
 	    var inputY = e.clientY;
 	    mouse.x = (inputX / $(window).width()) * 2 - 1;
@@ -714,8 +608,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				new THREE.Vector3( 0, -10, 0 ),
 				new THREE.Vector3( 0, 10, 0 ),
 				new THREE.Vector3( 0, 0, -10 ),
-				new THREE.Vector3( 0, 0, 10 )
-			);
+				new THREE.Vector3( 0, 0, 10 ));
 			line = new THREE.Line( axes, linematerial, THREE.LinePieces);
 		} else if (spaceOption == "box"){
 			axes.vertices.push(
