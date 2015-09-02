@@ -27,7 +27,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 	var linematerial = new THREE.LineBasicMaterial({
 		color: 0xffffff,
-		linewidth: 4
+		linewidth: 1
 	});
 
 	var parallelogramLineMaterial = new THREE.LineBasicMaterial({
@@ -119,12 +119,22 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 		var scene = new THREE.Scene();
 		var camera = new THREE.PerspectiveCamera( 30, width / height, 0.1, 1000 );
+		camera.position.setX(30);
+		camera.position.setY(20);
 		camera.position.setZ(40);
 
 		// Prepare Orbit controls
 		controls = new THREE.OrbitControls(camera);
 		controls.target = new THREE.Vector3(0, 0, 0);
 		controls.maxDistance = 150;
+
+
+		// enabled Orbit controls when a different panel is clicked.
+		// although Orbit controls might be diabled again if a control point is clicked.
+		document.addEventListener('mousedown', function (event) {
+			var mouse_pos = getRelativeMousePositionInBoard(event, board);
+			board.controls.enabled = (Math.abs(mouse_pos.x) < 1 && Math.abs(mouse_pos.y) < 1);
+		}, false);
 
 		// fastest
 		//var renderer = new THREE.WebGLRenderer();
@@ -333,7 +343,6 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		return basisCopy;
 	};
 
-
 	manifold.controlPoint = function(board, space) {
 		var cursorSurface = new THREE.SphereGeometry(2.5, 100, 100);
 		var funMesh = new THREE.Mesh(cursorSurface, controlPointMaterial);
@@ -351,24 +360,13 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		var offset = new THREE.Vector3();
 
 		document.addEventListener('mousedown', function (event) {
-			/*var board_position = $("#" + board.id).offset();
-
-		    var inputX = event.pageX - board_position.left;
-		    var inputY = event.pageY - board_position.top;
-
-		    mouse.x = (inputX / board.renderer.domElement.width) * 2 - 1;
-			mouse.y = -(inputY / board.renderer.domElement.height) * 2 + 1;*/
-
 			var mouse_pos = getRelativeMousePositionInBoard(event, board);
 			mouse.x = mouse_pos.x;
 			mouse.y = mouse_pos.y;
-
 			space.updateMatrixWorld();
 			var intersects = raycaster.intersectObjects( manifold.controlPoints);
 			if (intersects.length > 0) {
-				for (var i = 0; i < boards.length; i++) {
-					boards[i].controls.enabled = false;
-				}
+				board.controls.enabled = false;
 				selection = intersects[0].object;
 				selection.material.color.set(0x00ff00);
 				var plane_intersects = raycaster.intersectObject(plane);
@@ -383,19 +381,6 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			// code adapted from this tutorial for dragging and dropping objects:
 			// https://www.script-tutorials.com/webgl-with-three-js-lesson-10/
 			event.preventDefault();
-
-			// Get mouse position
-			//var mouseX = (event.clientX / window.innerWidth) * 2 - 1;
-			//var mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
-			//
-			/*var board_position = $("#" + board.id).offset();
-
-			var inputX = event.pageX - board_position.left;
-		    var inputY = event.pageY - board_position.top;
-
-			mouseX = (inputX / board.renderer.domElement.width) * 2 - 1;
-			mouseY = -(inputY / board.renderer.domElement.height) * 2 + 1;*/
-
 			var mouse_pos = getRelativeMousePositionInBoard(event, board);
 
 			// Get 3D vector from 3D mouse position using 'unproject' function
@@ -444,20 +429,20 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	manifold.nearbyGridLines = function(space, controlPoint) {
 		var gridLines = new THREE.Geometry();
 		var m = 1;
-		var gridSize = 1;
+		var gridSize = 2;
 		var cuts = 10;
-		var step = gridSize / cuts;
+		var step = 1 / cuts;
 		for (var i = -m; i <= m; i++) {
 			for (var j = -m; j <= m; j++) {
 				for (var k = -m; k <= m; k++) {
 					for (var s = 0; s < cuts; s++) {
 						gridLines.vertices.push(
-							new THREE.Vector3(i+s*step, j, k),
-							new THREE.Vector3(i+(s+1)*step, j, k),
-							new THREE.Vector3(i, j+s*step, k),
-							new THREE.Vector3(i, j+(s+1)*step, k),
-							new THREE.Vector3(i, j, k+s*step),
-							new THREE.Vector3(i, j, k+(s+1)*step));
+							new THREE.Vector3(i+s*step, j, k).multiplyScalar(gridSize),
+							new THREE.Vector3(i+(s+1)*step, j, k).multiplyScalar(gridSize),
+							new THREE.Vector3(i, j+s*step, k).multiplyScalar(gridSize),
+							new THREE.Vector3(i, j+(s+1)*step, k).multiplyScalar(gridSize),
+							new THREE.Vector3(i, j, k+s*step).multiplyScalar(gridSize),
+							new THREE.Vector3(i, j, k+(s+1)*step).multiplyScalar(gridSize));
 					}
 				}
 			}
@@ -476,16 +461,23 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				// with the constraint that the line segment is only allowed to
 				// occupy a lattice of locations
 				for (var i = 0; i < gridMesh.geometry.vertices.length; i+=2) {
+
+
 					var motion = new THREE.Vector3(0,0,0).copy(controlPoint.position).sub(gridMesh.geometry.vertices[i]);
-					var t = Math.max(0, 2 - 1.5 * motion.length());
-					t = Math.min(1, t);
+					var multiplying_factor = 0.5 + 0.5 * Math.sin(-3 * motion.length() + 0.002 * new Date().getTime());
+					var t = Math.max(0, 1 - 0.6 * motion.length());
+					t = Math.min(1, t) * multiplying_factor;
 					var color = new THREE.Color( 0xffffff );
 					color.setRGB(t,t,t);
 					gridMesh.geometry.colors[i] = color;
 
-					//var color = new THREE.Color( 0xffffff );
-					//color.setRGB(Math.random(),Math.random(),Math.random());
-					gridMesh.geometry.colors[i+1] = color;
+
+					var motion_2 = new THREE.Vector3(0,0,0).copy(controlPoint.position).sub(gridMesh.geometry.vertices[i+1]);
+					var t_2 = Math.max(0, 1 - 0.6 * motion_2.length());
+					t_2 = Math.min(1, t_2) * multiplying_factor;
+					var color_2 = new THREE.Color( 0xffffff );
+					color_2.setRGB(t_2,t_2,t_2);
+					gridMesh.geometry.colors[i+1] = color_2;
 
 
 					motion.divideScalar(f);
@@ -538,31 +530,34 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		basis.add(j);
 		basis.add(k);
 
-		var extraLines = new THREE.Geometry();
-		var b = basisLength;
-		extraLines.vertices.push(
-			new THREE.Vector3(b, 0, 0),
-			new THREE.Vector3(b, b, 0),
-			new THREE.Vector3(b, 0, 0),
-			new THREE.Vector3(b, 0, b),
-			new THREE.Vector3(0, b, 0),
-			new THREE.Vector3(b, b, 0),
-			new THREE.Vector3(0, b, 0),
-			new THREE.Vector3(0, b, b),
-			new THREE.Vector3(0, 0, b),
-			new THREE.Vector3(b, 0, b),
-			new THREE.Vector3(0, 0, b),
-			new THREE.Vector3(0, b, b),
-			new THREE.Vector3(0, b, b),
-			new THREE.Vector3(b, b, b),
-			new THREE.Vector3(b, 0, b),
-			new THREE.Vector3(b, b, b),
-			new THREE.Vector3(b, b, 0),
-			new THREE.Vector3(b, b, b)
-			);
-		var additionalLines = new THREE.Line(extraLines, parallelogramLineMaterial, THREE.LinePieces);
+		var addExtraLines = false;
+		if (addExtraLines) {
+			var extraLines = new THREE.Geometry();
+			var b = basisLength;
+			extraLines.vertices.push(
+				new THREE.Vector3(b, 0, 0),
+				new THREE.Vector3(b, b, 0),
+				new THREE.Vector3(b, 0, 0),
+				new THREE.Vector3(b, 0, b),
+				new THREE.Vector3(0, b, 0),
+				new THREE.Vector3(b, b, 0),
+				new THREE.Vector3(0, b, 0),
+				new THREE.Vector3(0, b, b),
+				new THREE.Vector3(0, 0, b),
+				new THREE.Vector3(b, 0, b),
+				new THREE.Vector3(0, 0, b),
+				new THREE.Vector3(0, b, b),
+				new THREE.Vector3(0, b, b),
+				new THREE.Vector3(b, b, b),
+				new THREE.Vector3(b, 0, b),
+				new THREE.Vector3(b, b, b),
+				new THREE.Vector3(b, b, 0),
+				new THREE.Vector3(b, b, b)
+				);
+			var additionalLines = new THREE.Line(extraLines, parallelogramLineMaterial, THREE.LinePieces);
 
-		basis.add(additionalLines);
+			basis.add(additionalLines);
+		}
 
 		return basis;
 	};
