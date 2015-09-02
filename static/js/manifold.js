@@ -30,6 +30,11 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		linewidth: 4
 	});
 
+	var parallelogramLineMaterial = new THREE.LineBasicMaterial({
+		color: 0x444444,
+		linewidth: 2
+	});
+
 	var surfaceMaterial = new THREE.MeshBasicMaterial({
 		color:0xffffff,
 		transparent:true,
@@ -150,10 +155,9 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			col1 = userFunc(new THREE.Vector3(epsilon, 0, 0).add(input)).sub(userFunc(input)).divideScalar(epsilon);
 			col2 = userFunc(new THREE.Vector3(0, epsilon, 0).add(input)).sub(userFunc(input)).divideScalar(epsilon);
 			col3 = userFunc(new THREE.Vector3(0,0, epsilon).add(input)).sub(userFunc(input)).divideScalar(epsilon);
-			//document.getElementById("debug").innerHTML = col1.x;
 			return new THREE.Matrix3().set(col1.x, col2.x, col3.x,
-				                 col1.y, col2.y, col3.y,
-				                 col1.z, col2.z, col3.z);
+				                           col1.y, col2.y, col3.y,
+				                           col1.z, col2.z, col3.z);
 		};
 	};
 
@@ -170,21 +174,79 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		//var newBasis = basis.clone();
 		var newBasis = manifold.unitBasis(3, space);
 		for (var i = 0; i < basis.children.length; i++) {
-			//newBasis.children[i].geometry = basis.children[i].geometry.clone();
 			newBasis.children[i].geometry.dynamic = true;
 		}
 		updateRules.push({
 			update:function(){
 				var m = jacobian(cursor);
 				for (var i = 0; i < basis.children.length; i++) {
-					newBasis.children[i].geometry.vertices[1].copy(basis.children[i].geometry.vertices[1]);
-					newBasis.children[i].geometry.vertices[1].applyMatrix3(m);
+					for (var j = 0; j < newBasis.children[i].geometry.vertices.length; j++) {
+						newBasis.children[i].geometry.vertices[j].copy(basis.children[i].geometry.vertices[j]);
+						newBasis.children[i].geometry.vertices[j].applyMatrix3(m);
+					}
 					newBasis.children[i].geometry.verticesNeedUpdate = true;
 				}
 			}
 		});
 		return newBasis;
 	};
+
+	// Shows the matrix of values in the jacobian.
+	manifold.showJacobian = function(jacobian) {
+		var matrixBox = $("<div/>")
+			.html("jacobian matrix appears here")
+			.attr("id", "jacobian_matrix")
+			.css({
+				"max-width": "500px",
+				padding: "5px",
+				position: "absolute",
+				left: "10px",
+				bottom: "10px",
+				display: "block",
+				"background-color": "black",
+				color:"white"
+			})
+			.prependTo($("body"));
+		updateRules.push({
+			update: function() {
+				matrixBox.html("jacobian matrix:<br>");
+				var m = jacobian(cursor);
+				var M = m.toArray();
+				var brackets = $("<div/>")
+					.css({
+						display: "inline-block",
+						"border-right": "1px solid",
+						"border-left": "1px solid",
+						"border-radius": "5px",
+						"text-align": "right",
+						padding:"3px"
+						})
+					.appendTo(matrixBox);
+
+				for (var i = 0; i < 3; i++) {
+					var column = $("<div/>")
+						.css({
+							display: "inline-block",
+							"text-align": "right",
+							padding:"3px"
+							})
+						.appendTo(brackets);
+					for (var j = 0; j < 3; j++) {
+						column.append(M[i * 3 + j].toFixed(2));
+						column.append("<br>");
+					}
+				}
+
+				/*for (var i = 0; i < 3; i++) {
+					for (var j = 0; j < 3; j++) {
+						matrixBox.append(M[i + j * 3].toFixed(2));
+						matrixBox.append(" ");
+					}
+					matrixBox.append("<br>")
+				}*/
+			}
+		});
+	}
 
 	// Utility function for creating surfaces with excessively many polygons
 	manifold.surface = function(type, space) {
@@ -273,9 +335,10 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				offset.copy(selection.position);
 				offset.sub(plane_intersects[0].point);
 			}
-			document.getElementById("debug").innerHTML = "detected click on " + intersects.length + " objects";
+			//document.getElementById("debug").innerHTML = "detected click on " + intersects.length + " objects";
 
 		}, false);
+
 
 		document.addEventListener('mousemove', function (event) {
 			// code adapted from https://www.script-tutorials.com/webgl-with-three-js-lesson-10/
@@ -420,6 +483,33 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		basis.add(i);
 		basis.add(j);
 		basis.add(k);
+
+		var extraLines = new THREE.Geometry();
+		var b = basisLength;
+		extraLines.vertices.push(
+			new THREE.Vector3(b, 0, 0),
+			new THREE.Vector3(b, b, 0),
+			new THREE.Vector3(b, 0, 0),
+			new THREE.Vector3(b, 0, b),
+			new THREE.Vector3(0, b, 0),
+			new THREE.Vector3(b, b, 0),
+			new THREE.Vector3(0, b, 0),
+			new THREE.Vector3(0, b, b),
+			new THREE.Vector3(0, 0, b),
+			new THREE.Vector3(b, 0, b),
+			new THREE.Vector3(0, 0, b),
+			new THREE.Vector3(0, b, b),
+			new THREE.Vector3(0, b, b),
+			new THREE.Vector3(b, b, b),
+			new THREE.Vector3(b, 0, b),
+			new THREE.Vector3(b, b, b),
+			new THREE.Vector3(b, b, 0),
+			new THREE.Vector3(b, b, b)
+			);
+		var additionalLines = new THREE.Line(extraLines, parallelogramLineMaterial, THREE.LinePieces);
+
+		basis.add(additionalLines);
+
 		return basis;
 	};
 

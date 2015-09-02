@@ -23,7 +23,7 @@ var donut = function(vector) {
 	var u = (radius - inner_radius) * Math.sin(vector.x);
 	var v = Math.cos(0.2 * vector.y) * (radius + (radius - inner_radius) * Math.cos(vector.x));
 	return new THREE.Vector3(t, u, v);
-}
+};
 
 var identity = function(vector) {
 	return new THREE.Vector3().copy(vector);
@@ -87,12 +87,14 @@ var foo = function() {
 	var space_a = manifold.space3(board, new THREE.Vector3(-11,0,0), "axes");
 	var space_b = manifold.space3(board, new THREE.Vector3(11,0,0), "axes");
 
+
 	/*
 	// Add a surface that is mapped through the function
 	var surface = manifold.surface("cube", space_a);
 	manifold.controlSurfacePositionWithCursor(surface);
 	var surface2 = manifold.image(spherical, surface, space_b);
 	*/
+	var controlPoint = manifold.controlPoint(board, space_a);
 
 	var cursorSpace = manifold.createCursorSpace(space_a);
 	var cursorImageSpace = manifold.imageOfSpace(spherical, cursorSpace, space_b);
@@ -103,10 +105,12 @@ var foo = function() {
 	var transformedBasis = manifold.transformBasisWithJacobian(basicBasis, cursorImageSpace, D_Spherical);
 	//var pointCloud1 = manifold.genericPointCloud(space_a);
 	//var pointCloud2 = manifold.pointCloudImage(space_b, pointCloud1, spherical);
+	//
+
+	var jacobianMatrixDisplay = manifold.showJacobian(D_Spherical);
+
 	var sneakyGridLines = manifold.nearbyGridLines(space_a);
 	var warpyGridLines = manifold.image(spherical, sneakyGridLines, space_b, true);
-
-	var controlPoint = manifold.controlPoint(board, space_a);
 	// manifold.controlSurfacePositionWithControlPoint(surface, controlPoint);
 
 	// Selects the first control point that has been added for use as the cursor
