@@ -1,8 +1,8 @@
-/* 
+/*
 .-------------.
 | manifold.js |
 '-------------'
-A free javascript library built on THREE.js that makes it 
+A free javascript library built on THREE.js that makes it
 easier to create demos of linear algebra and multivariable calculus.
 
 The latest version of this project may be found at github.com/yeahpython/manifold
@@ -13,21 +13,29 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 /* (Uh, this is a 'self-executing anonymous function' that helps ensure that
     I can use private and publics methods and variables.)*/
 (function(manifold, $, THREE, undefined){
-	
+
 	// Public Methods
 	/*
 	manifold.board
 	--------------
 	Makes a board (secretly a THREE.js scene, camera and renderer).
-	   
+
 	Parameters:
 	       id: a string indicating the DOM element where we want to put the board
 	    width: width in pixels of the board
 	   height: height in pixels of the board
 	*/
 	manifold.board = function(id, width, height) {
+
+
 		var scene = new THREE.Scene();
-		var camera = new THREE.PerspectiveCamera( 75, width / height, 0.1, 1000 );
+		var camera = new THREE.PerspectiveCamera( 30, width / height, 0.1, 1000 );
+		camera.position.setZ(40);
+
+		// Prepare Orbit controls
+		controls = new THREE.OrbitControls(camera);
+		controls.target = new THREE.Vector3(0, 0, 0);
+		controls.maxDistance = 150;
 
 		// fastest
 		//var renderer = new THREE.WebGLRenderer();
@@ -35,7 +43,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		// fast
 		var renderer = new THREE.WebGLRenderer({alpha:true, antialias:true});
 
-		renderer.setClearColor(0xffffff, 1.0);
+		renderer.setClearColor(0x000000, 1.0);
 
 		// slower, with rounded line caps
 		//var renderer = new THREE.CanvasRenderer({alpha:true, antialias:true});
@@ -44,22 +52,21 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		var box = document.getElementById(id);
 		box.appendChild( renderer.domElement );
 		var board = {
-			scene:scene,
-			camera:camera,
-			renderer:renderer
-		}
+			scene: scene,
+			camera: camera,
+			renderer: renderer,
+			controls: controls
+		};
 		boards.push(board);
-
-
 		return board;
-	}
+	};
 
 	// Adds an object representing three-dimensional space to the board.
 	// Adds axes by default, although this may change.
 	manifold.space3 = function(board, origin, spaceOption) {
 		//okay for spaceOption to be undefined
 		return space(3, board, origin, spaceOption);
-	}
+	};
 
 	// Returns an approximate Jacobian of function userFunc
 	// so if userfunc takes an n-vector and returns a m-vector,
@@ -75,7 +82,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				                 col1.y, col2.y, col3.y,
 				                 col1.z, col2.z, col3.z);
 		};
-	}
+	};
 
 
 	/*
@@ -104,7 +111,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			}
 		});
 		return newBasis;
-	}
+	};
 
 	// Make a new surface in a given space
 	manifold.surface = function(type, space) {
@@ -116,12 +123,12 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		} else {
 			throw "Unrecognized surface type";
 		}
-	}
+	};
 
 	// Create the image of object under userFunc in space
 	// currently compatible with the following objects:
 	//
-	manifold.image = function(userFunc, object, space) {
+	manifold.image = function(userFunc, object, space, copyColors) {
 		var mesh = object.clone();
 		mesh.geometry = object.geometry.clone();
 		space.add(mesh);
@@ -134,8 +141,18 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				mesh.geometry.verticesNeedUpdate = true;
 			}
 		});
+		if (copyColors) {
+			updateRules.push({
+			update:function(){
+				for (var i = 0; i < object.geometry.vertices.length; i++) {
+					mesh.geometry.colors[i] = object.geometry.colors[i];
+				}
+				mesh.geometry.colorsNeedUpdate = true;
+			}
+		});
+		}
 		return mesh;
-	}
+	};
 
 	var xAxisMaterial = new THREE.LineBasicMaterial({
 		color: 0xff0000,
@@ -164,9 +181,29 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			}
 		});
 		return basisCopy;
-	}
+	};
 
-	var gridMaterial = new THREE.LineBasicMaterial({color: 0xaaaaaa});
+	var gridMaterial = new THREE.LineBasicMaterial({
+		color: 0xaaaaaa,
+		vertexColors: THREE.VertexColors,
+		//blending: THREE.AdditiveBlending,
+		depthWrite:false,
+	});
+
+	/*gridMaterial.blending = THREE.CustomBlending;
+	gridMaterial.blendEquation = THREE.MaxEquation;
+	gridMaterial.blendSrc = THREE.DstColorFactor;
+	gridMaterial.blendDst = THREE.OneFactor;
+	gridMaterial.needsUpdate = true;*/
+
+	manifold.controlPoint = function(space) {
+		var cursorSurface = new THREE.SphereGeometry(0.5,100,100);
+		var funMesh = new THREE.Mesh(cursorSurface, paper2);
+		space.add(funMesh);
+		funMesh.position.set(2,2,2);
+		manifold.controlPoints.push(funMesh);
+		return funMesh;
+	}
 
 	manifold.nearbyGridLines = function(space) {
 		var gridLines = new THREE.Geometry();
@@ -184,8 +221,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 							new THREE.Vector3(i, j+s*step, k),
 							new THREE.Vector3(i, j+(s+1)*step, k),
 							new THREE.Vector3(i, j, k+s*step),
-							new THREE.Vector3(i, j, k+(s+1)*step)
-							);
+							new THREE.Vector3(i, j, k+(s+1)*step));
 					}
 				}
 			}
@@ -198,12 +234,33 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		space.add(gridMesh);
 
 		updateRules.push({
-			update:function() {
+			update: function() {
 				var f = 2*m + 1;
+				document.getElementById("debug").innerHTML = "";
+				var motions = 0;
 				for (var i = 0; i < gridMesh.geometry.vertices.length; i+=2) {
 					// desired movement
 					var motion = new THREE.Vector3(0,0,0).copy(cursor).sub(gridMesh.geometry.vertices[i]);
 
+					var t = motion.length();
+					//document.getElementById("debug").innerHTML = "gridMesh.geometry.vertices[" + i + "].x: " + gridMesh.geometry.vertices[i].x + "<br>";
+					t *= 0.5;
+					t = Math.max(0, 2 - 3 * t);
+					t = Math.min(1, t);
+					/*
+					if (t < 1) {
+						t = 1;
+					}
+					else {
+						t = 0;
+					}*/
+					var color = new THREE.Color( 0xffffff );
+					color.setRGB(t,t,t);
+					gridMesh.geometry.colors[i] = color;
+
+					//var color = new THREE.Color( 0xffffff );
+					//color.setRGB(Math.random(),Math.random(),Math.random());
+					gridMesh.geometry.colors[i+1] = color;
 
 
 					motion.divideScalar(f);
@@ -213,10 +270,17 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 					motion.z = Math.round(motion.z);
 					motion.multiplyScalar(f);
 
+					if (motion.x != 0) {
+						motions += 1;
+					}
+
 					gridMesh.geometry.vertices[i].add(motion);
 					gridMesh.geometry.vertices[i+1].add(motion);
+
 				}
+				console.log(motions);
 				gridMesh.geometry.verticesNeedUpdate = true;
+				gridMesh.geometry.colorsNeedUpdate = true;
 			}
 		});
 
@@ -264,7 +328,9 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	// draws a line between two spaces, with text showing label over it.
 	manifold.arrow = function(source, target, label) {
 
-	}
+	};
+
+
 
 	manifold.render = function() {
 
@@ -274,15 +340,16 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			updateAll();
 			var inputX = cursor.x;
 			var inputY = cursor.y;
+			// update the picking ray with the camera and mouse position
 			for (var i = 0; i < boards.length; i++) {
 				boards[i].renderer.render(boards[i].scene, boards[i].camera);
-				var cameraTarget = new THREE.Vector3(6 *inputX,6 * inputY, 20 );
-				boards[i].camera.position.lerp(cameraTarget, 0.01);
+				/*var cameraTarget = new THREE.Vector3(6 *inputX,6 * inputY, 20 );
+				boards[i].camera.position.lerp(cameraTarget, 0.01);*/
 				boards[i].camera.lookAt(new THREE.Vector3(0,0,0));
 			}
 		}
 		requestAnimationFrame(manifold.render);
-	}
+	};
 
 	function updateAll() {
 		// future: sort according to dependencies
@@ -290,7 +357,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		for (var i = 0; i < updateRules.length; i++) {
 			updateRules[i].update();
 		}
-	}
+	};
 
 	/*
 	function updateAll() {
@@ -349,7 +416,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 	// I also need this thing to know when something doesn't need to be changed.
 
-	// I don't want to build too much infrastructure outside of THREE.js, but I don't want to 
+	// I don't want to build too much infrastructure outside of THREE.js, but I don't want to
 	// simply hack into the existing THREE.js structure either.
 	var updateRules = [
 	{
@@ -375,7 +442,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	var cursor = new THREE.Vector3(0,0,0);
 	manifold.getCursor = function(){
 		return new THREE.Vector3(cursor);
-	}
+	};
 
 	var leapCursor3d = new THREE.Vector3(0,0,0);
 
@@ -388,7 +455,12 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				leapCursor3d.set(p[0], p[1]-100, p[2]+100).divideScalar(40);
 			}
 		});
-	}
+	};
+
+	manifold.tryToControlInputWithSomeControlPoint = function() {
+		document.getElementById("control").innerHTML = "Control Point";
+		manifold.cursorControl = "some control point";
+	};
 
 	var pointCloudMaterial = new THREE.PointCloudMaterial({color:0x000000, size:0.3});
 
@@ -406,7 +478,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		var pointCloud = new THREE.PointCloud(points, pointCloudMaterial);
 		space.add(pointCloud);
 		return pointCloud;
-	}
+	};
 
 	manifold.pointCloudImage = function(space, pointCloud, userFunc) {
 		space.updateMatrixWorld();
@@ -415,15 +487,19 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			newPointCloud.geometry.vertices[i] = userFunc(newPointCloud.geometry.vertices[i]);
 		}
 		space.add(newPointCloud);
-	}
+	};
 
 	function get3DCursor(){
 		if (manifold.cursorControl == "leap") {
 			cursor.copy(leapCursor3d);
-		} else {
+		} else if (manifold.cursorControl == "mouse") {
 			cursor.copy(mouse3d);
+		} else if (manifold.controlPoints){
+			cursor.copy(manifold.controlPoints[0].position);
+		} else {
+			console.log("didn't know what to do to with cursorControl");
 		}
-	}
+	};
 
 	// Creates a THREE.js space as a child of a given space, tracking the position of the cursor at every frame
 	manifold.createCursorSpace = function(parent) {
@@ -435,7 +511,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			}
 		});
 		return space;
-	}
+	};
 
 	manifold.imageOfSpace = function(userFunc, originalSpace, parent) {
 		var space = new THREE.Object3D();
@@ -444,7 +520,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			space.position.copy(userFunc(originalSpace.position));
 		}});
 		return space;
-	}
+	};
 
 	/*manifold.controlSurfacePositionWithCursor = function(surface) {
 		// Rig things up so that every time we need to compute geometry of this surface,
@@ -474,6 +550,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	var updateIteration = 0;
 
 	var boards = [];
+	manifold.controlPoints = [];
 
 
 	// load a texture, set wrap mode to repeat
@@ -484,13 +561,14 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 	//var paper = new THREE.MeshLambertMaterial({color:0xffffff});
 	//var paper = new THREE.MeshBasicMaterial({color:0xffffff, map:texture, transparent:true});
-	var paper = new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:0.1});
+	var paper = new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.1});
+	var paper2 = new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.3});
 	//var paper = new THREE.MeshLambertMaterial({color:0xffffff, wireframe:true});
 
 
 	var linematerial = new THREE.LineBasicMaterial({
-		color: 0x222222,
-		linewidth: 1
+		color: 0x333333,
+		linewidth: 4
 	});
 
 	var cursorSurface = new THREE.SphereGeometry(6,100,100);
@@ -503,12 +581,14 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	var mouse = {x: 0, y: 0};
 	var mouse3d = new THREE.Vector3(0,0,0);
 
-	document.addEventListener('mousemove', function(e){ 
-	    mouse.x = e.clientX || e.pageX; 
-	    mouse.y = e.clientY || e.pageY;
-	    var inputX = (mouse.x / $(window).width()) - 0.5;
-		var inputY = (mouse.y / $(window).height()) - 0.5;
-		mouse3d.set( 10*inputX , -10 * inputY, 5);
+	document.addEventListener('mousemove', function(e){
+	    var inputX = e.clientX || e.pageX;
+	    var inputY = e.clientY || e.pageY;
+	    var inputX = e.clientX;
+	    var inputY = e.clientY;
+	    mouse.x = (inputX / $(window).width()) * 2 - 1;
+		mouse.y = -(inputY / $(window).height()) * 2 + 1;
+		mouse3d.set( 5*mouse.x , 5 * mouse.y, 5);
 	}, false);
 
 
@@ -585,11 +665,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				new THREE.Vector3( 10, 10, 10 ),
 
 				new THREE.Vector3( 10, 10, -10 ),
-				new THREE.Vector3( 10, 10, 10 )
-
-
-
-			);
+				new THREE.Vector3( 10, 10, 10 ));
 			line = new THREE.Line( axes, linematerial, THREE.LinePieces);
 		}
 
