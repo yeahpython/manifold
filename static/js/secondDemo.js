@@ -80,9 +80,14 @@ function getRandomColor() {
 }
 
 var foo = function() {
-	var board = manifold.board("board", window.innerWidth - 10, window.innerHeight - 10);
-	var space_a = manifold.space3(board, new THREE.Vector3(-11,0,0), "axes");
-	var space_b = manifold.space3(board, new THREE.Vector3(11,0,0), "axes");
+	var renderer = new THREE.WebGLRenderer({alpha:true, antialias:true});
+	renderer.setClearColor(0x000000, 1.0);
+
+	//var board = manifold.board("board", window.innerWidth / 2, window.innerHeight - 10);
+	var board = manifold.board("board", window.innerWidth, window.innerHeight, 0, 0, 0.5, 1, renderer);
+	var board_2 = manifold.board("board", window.innerWidth, window.innerHeight, 0.5, 0, 0.5, 1, renderer);
+	var space_a = manifold.space3(board, new THREE.Vector3(0,0,0), "axes");
+	var space_b = manifold.space3(board_2, new THREE.Vector3(0,0,0), "axes");
 
 	var controlPoint = manifold.controlPoint(board, space_a);
 
@@ -105,5 +110,5 @@ var foo = function() {
 	var sneakyGridLines = manifold.nearbyGridLines(space_a, controlPoint);
 	var warpyGridLines = manifold.image(spherical, sneakyGridLines, space_b, true);
 
-	manifold.render(board);
+	manifold.render();
 };

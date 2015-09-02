@@ -104,8 +104,19 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	       id: a string indicating the DOM element where we want to put the board
 	    width: width in pixels of the board
 	   height: height in pixels of the board
+	     left: fractional offset on left of subview that this board covers
+	   bottom: fractional offset on bottom
+   innerWidth: fractional width of this view
+  innerHeight: fractional height of this view
 	*/
-	manifold.board = function(id, width, height) {
+	manifold.board = function(id, width, height, left, bottom, innerWidth, innerHeight, renderer) {
+		var view = {
+			left: left,
+			bottom: bottom,
+			width: innerWidth,
+			height: innerHeight
+		}
+
 		var scene = new THREE.Scene();
 		var camera = new THREE.PerspectiveCamera( 30, width / height, 0.1, 1000 );
 		camera.position.setZ(40);
@@ -119,9 +130,9 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		//var renderer = new THREE.WebGLRenderer();
 
 		// fast
-		var renderer = new THREE.WebGLRenderer({alpha:true, antialias:true});
+		//var renderer = new THREE.WebGLRenderer({alpha:true, antialias:true});
 
-		renderer.setClearColor(0x000000, 1.0);
+		//renderer.setClearColor(0x000000, 1.0);
 
 		// slower, with rounded line caps
 		//var renderer = new THREE.CanvasRenderer({alpha:true, antialias:true});
@@ -130,10 +141,12 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		var box = document.getElementById(id);
 		box.appendChild( renderer.domElement );
 		var board = {
+			id: id,
 			scene: scene,
 			camera: camera,
 			renderer: renderer,
-			controls: controls
+			controls: controls,
+			view: view
 		};
 		boards.push(board);
 		return board;
@@ -161,7 +174,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		};
 	};
 
-
+	// TODO: Make this work transitively.
 	manifold.warpTangentSpaceWithJacobian = function(originalSpace, targetParentSpace, jacobian, f, controlPoint) {
 		var newSpace = originalSpace.clone();
 
@@ -173,6 +186,8 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			update: function(){
 				// newSpace.position.copy(controlPoint.position);
 				// copy over local transformation
+				//
+				// TODO: I'm pretty sure that to do this transitively this needs to be a matrix multiplication.
 				var m = jacobian(controlPoint.position);
 				for (var i = 0; i < 3; i++) {
 					for (var j = 0; j < 3; j++) {
@@ -335,17 +350,25 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		space.add(plane);
 		var offset = new THREE.Vector3();
 
-		document.addEventListener('mousedown', function (e) {
-		    var inputX = e.clientX;
-		    var inputY = e.clientY;
+		document.addEventListener('mousedown', function (event) {
+			/*var board_position = $("#" + board.id).offset();
 
-		    mouse.x = (inputX / $(window).width()) * 2 - 1;
-			mouse.y = -(inputY / $(window).height()) * 2 + 1;
+		    var inputX = event.pageX - board_position.left;
+		    var inputY = event.pageY - board_position.top;
+
+		    mouse.x = (inputX / board.renderer.domElement.width) * 2 - 1;
+			mouse.y = -(inputY / board.renderer.domElement.height) * 2 + 1;*/
+
+			var mouse_pos = getRelativeMousePositionInBoard(event, board);
+			mouse.x = mouse_pos.x;
+			mouse.y = mouse_pos.y;
 
 			space.updateMatrixWorld();
 			var intersects = raycaster.intersectObjects( manifold.controlPoints);
 			if (intersects.length > 0) {
-				board.controls.enabled = false;
+				for (var i = 0; i < boards.length; i++) {
+					boards[i].controls.enabled = false;
+				}
 				selection = intersects[0].object;
 				selection.material.color.set(0x00ff00);
 				var plane_intersects = raycaster.intersectObject(plane);
@@ -362,11 +385,21 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			event.preventDefault();
 
 			// Get mouse position
-			var mouseX = (event.clientX / window.innerWidth) * 2 - 1;
-			var mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+			//var mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+			//var mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+			//
+			/*var board_position = $("#" + board.id).offset();
+
+			var inputX = event.pageX - board_position.left;
+		    var inputY = event.pageY - board_position.top;
+
+			mouseX = (inputX / board.renderer.domElement.width) * 2 - 1;
+			mouseY = -(inputY / board.renderer.domElement.height) * 2 + 1;*/
+
+			var mouse_pos = getRelativeMousePositionInBoard(event, board);
 
 			// Get 3D vector from 3D mouse position using 'unproject' function
-			var vector = new THREE.Vector3(mouseX, mouseY, 1);
+			var vector = new THREE.Vector3(mouse_pos.x, mouse_pos.y, 1);
 			vector.unproject(board.camera);
 
 			// Set the raycaster position
@@ -398,7 +431,9 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 		}, false);
 		document.addEventListener('mouseup', function (e) {
-			board.controls.enabled = true;
+			for (var i = 0; i < boards.length; i++) {
+				boards[i].controls.enabled = true;
+			}
 			selection = null;
 		}, false);
 		return funMesh;
@@ -546,7 +581,16 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			var inputY = cursor.y;
 			// update the picking ray with the camera and mouse position
 			for (var i = 0; i < boards.length; i++) {
+				var left = Math.floor(boards[i].renderer.domElement.width * boards[i].view.left);
+				var bottom = Math.floor(boards[i].renderer.domElement.height * boards[i].view.bottom);
+				var width = Math.floor(boards[i].renderer.domElement.width * boards[i].view.width);
+				var height = Math.floor(boards[i].renderer.domElement.height * boards[i].view.height);
+				boards[i].renderer.setViewport( left, bottom, width, height );
+				boards[i].renderer.setScissor( left, bottom, width, height );
+				boards[i].renderer.enableScissorTest ( true );
 				boards[i].renderer.render(boards[i].scene, boards[i].camera);
+				boards[i].camera.aspect = width / height;
+				boards[i].camera.updateProjectionMatrix();
 				/*var cameraTarget = new THREE.Vector3(6 *inputX,6 * inputY, 20 );
 				boards[i].camera.position.lerp(cameraTarget, 0.01);*/
 				boards[i].camera.lookAt(new THREE.Vector3(0,0,0));
@@ -747,6 +791,26 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		} else {
 			console.log("didn't know what to do to with cursorControl");
 		}
+	}
+
+	function getRelativeMousePositionInBoard(event, board) {
+		var board_position = $("#" + board.id).offset();
+
+		var inputX = event.pageX - board_position.left;
+		var inputY = event.pageY - board_position.top;
+
+		// That is the position in the canvas. To get the position in the subwindow:
+		var left = Math.floor(board.renderer.domElement.width * board.view.left);
+		var bottom = Math.floor(board.renderer.domElement.height * board.view.bottom);
+		var width = Math.floor(board.renderer.domElement.width * board.view.width);
+		var height = Math.floor(board.renderer.domElement.height * board.view.height);
+
+		var x = inputX - left;
+		var y = inputY - (board.renderer.domElement.height - bottom - height);
+
+		var mouseX = (x / width) * 2 - 1;
+		var mouseY = -(y / height) * 2 + 1;
+		return {x: mouseX, y: mouseY}
 	}
 
 	/*
