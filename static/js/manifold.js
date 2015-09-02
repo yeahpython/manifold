@@ -61,6 +61,10 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		return board;
 	};
 
+
+
+
+
 	// Adds an object representing three-dimensional space to the board.
 	// Adds axes by default, although this may change.
 	manifold.space3 = function(board, origin, spaceOption) {
@@ -197,12 +201,94 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	gridMaterial.blendDst = THREE.OneFactor;
 	gridMaterial.needsUpdate = true;*/
 
-	manifold.controlPoint = function(space) {
+	manifold.controlPoint = function(board, space) {
 		var cursorSurface = new THREE.SphereGeometry(2.5, 100, 100);
 		var funMesh = new THREE.Mesh(cursorSurface, paper2);
 		space.add(funMesh);
 		funMesh.position.set(2,2,2);
 		manifold.controlPoints.push(funMesh);
+
+
+		//mouse = {x:0, y:0};
+		var selection = null;
+		var plane = new THREE.Mesh(new THREE.PlaneBufferGeometry(500, 500, 8, 8), new THREE.MeshBasicMaterial({color: 0x0000ff}));
+		plane.visible = false;
+		space.add(plane);
+		var offset = new THREE.Vector3();
+
+		document.addEventListener('mousedown', function (e) {
+		    var inputX = e.clientX;
+		    var inputY = e.clientY;
+
+		    mouse.x = (inputX / $(window).width()) * 2 - 1;
+			mouse.y = -(inputY / $(window).height()) * 2 + 1;
+
+			space.updateMatrixWorld();
+			var intersects = raycaster.intersectObjects( manifold.controlPoints);
+			if (intersects.length > 0) {
+				board.controls.enabled = false;
+				selection = intersects[0].object;
+				selection.material.color.set(0x00ff00);
+				var plane_intersects = raycaster.intersectObject(plane);
+				offset.copy(plane_intersects[0].point).sub(plane.position);
+				offset.copy(selection.position);
+				offset.sub(plane_intersects[0].point);
+			}
+			document.getElementById("debug").innerHTML = "detected click on " + intersects.length + " objects";
+
+		}, false);
+
+		document.addEventListener('mousemove', function (event) {
+			// code adapted from https://www.script-tutorials.com/webgl-with-three-js-lesson-10/
+			event.preventDefault();
+
+			// Get mouse position
+			var mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+			var mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+
+			// Get 3D vector from 3D mouse position using 'unproject' function
+			var vector = new THREE.Vector3(mouseX, mouseY, 1);
+			vector.unproject(board.camera);
+
+			// Set the raycaster position
+			raycaster.set( board.camera.position, vector.sub( board.camera.position ).normalize() );
+			if (selection) {
+				// Check the position where the plane is intersected
+				var intersects = raycaster.intersectObject(plane);
+				// Reposition the object based on the intersection point with the plane
+				// selection.position.copy(intersects[0].point.sub(offset));
+				selection.position.copy(intersects[0].point.add(offset));
+			} else {
+				for (var i = 0; i < manifold.controlPoints.length; i++) {
+					manifold.controlPoints[i].material.color.set(0xff0000);
+					manifold.controlPoints[i].material.opacity = 0;
+				}
+				// Update position of the plane if need
+				var object_intersects = raycaster.intersectObjects(manifold.controlPoints);
+				if (object_intersects.length > 0) {
+					object_intersects[0].object.material.color.set(0xffff00);
+					object_intersects[0].object.material.opacity = 0.1;
+					plane.position.copy(object_intersects[0].object.position);
+					// console.log(plane.position);
+
+					//plane.position.setFromMatrixPosition( object_intersects[0].object.matrixWorld );
+					// console.log(plane.position);
+					plane.lookAt(board.camera.position);
+				}
+			}
+
+		}, false);
+		document.addEventListener('mouseup', function (e) {
+			/*if (selection) {
+				selection.material.color.set(0xff0000);
+			}*/
+			board.controls.enabled = true;
+			selection = null;
+		}, false);
+
+
+
+
 		return funMesh;
 	}
 
@@ -279,7 +365,6 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 					gridMesh.geometry.vertices[i+1].add(motion);
 
 				}
-				console.log(motions);
 				gridMesh.geometry.verticesNeedUpdate = true;
 				gridMesh.geometry.colorsNeedUpdate = true;
 			}
