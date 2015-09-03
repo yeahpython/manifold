@@ -90,9 +90,9 @@ var foo = function() {
 	renderer.setClearColor(0x000000, 1.0);
 
 	//var board = manifold.board("board", window.innerWidth / 2, window.innerHeight - 10);
-	var board = manifold.board("board", window.innerWidth, window.innerHeight, 0.7, 0, 0.3, 1, renderer);
-	var board_2 = manifold.board("board", window.innerWidth, window.innerHeight, 0.4, 0, 0.3, 1, renderer);
-	var board_3 = manifold.board("board", window.innerWidth, window.innerHeight, 0, 0, 0.4, 1, renderer, 2);
+	var board = manifold.board("board", window.innerWidth, window.innerHeight, 0.6, 0, 0.4, 0.5, renderer);
+	var board_2 = manifold.board("board", window.innerWidth, window.innerHeight, 0.6, 0.5, 0.4, 0.5, renderer);
+	var board_3 = manifold.board("board", window.innerWidth, window.innerHeight, 0, 0, 0.6, 1, renderer, 2);
 	var space_a = manifold.space3(board, new THREE.Vector3(0,0,0), "axes", "C");
 	var space_b = manifold.space3(board_2, new THREE.Vector3(0,0,0), "axes", "B");
 	var space_c = manifold.space2(board_3, new THREE.Vector3(0,0,0), "axes", "A");
@@ -132,8 +132,8 @@ var foo = function() {
 	var jacobianMatrixDisplay = manifold.showJacobian(D_Spherical, controlPoint2D, 2);
 
 	var sneakyGridLines = manifold.nearbyGridLines(space_c, controlPoint2D, 2);
-	var warpyGridLines = manifold.image(f, sneakyGridLines, space_b, true);
-	var warpyGridLines2 = manifold.image(g, sneakyGridLines, space_a, true);
+	var warpyGridLines = manifold.image(f, sneakyGridLines, space_b, true, board_3, board_2);
+	var warpyGridLines2 = manifold.image(g, sneakyGridLines, space_a, true, board_3, board);
 
 	manifold.render();
 };

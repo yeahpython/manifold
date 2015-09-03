@@ -1,0 +1,31 @@
+#extra_content {
+	font-family: Georgia;
+	color: white;
+}
+
+#jacobian_matrix {
+	padding: 5px;
+	display: block;
+	background-color: black;
+}
+
+#matrix_brackets {
+	display: inline-block;
+	border-right: 1px solid;
+	border-left: 1px solid;
+	border-radius: 5px;
+	text-align: right;
+	padding: 3px;
+}
+
+#matrix_column {
+	display: inline-block;
+	text-align: right;
+	padding: 3px;
+}
+
+.symbol {
+	min-width: 100px;
+	display: inline-block;
+	text-align: right;
+}

@@ -2,24 +2,30 @@
 <html>
   <head>
       <script src="/static/js/external/jquery-1.11.2.min.js"></script>
-      <script src="/static/js/external/three.min.js"></script>
-      <!--script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r71/three.min.js"></script-->
+
+      <!--loads a litte faster, I think-->
+      <!--script src="/static/js/external/three.min.js"></script-->
+
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r71/three.min.js"></script>
       <script src="/static/js/manifold.js"></script>
       <script src="/static/js/secondDemo.js"></script>
       <script src="/static/js/external/OrbitControls.js"></script>
       <script src="/static/js/external/THREEx.WindowResize.js"></script>
-      <script src="//js.leapmotion.com/leap-0.6.4.min.js"></script>
+      <!--script src="//js.leapmotion.com/leap-0.6.4.min.js"></script-->
+      <link rel="stylesheet" type="text/css" href="/static/css/style2.css">
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   </head>
   <body onload="foo()", style="margin:0">
   	<div style = "font-family:Verdana; background-color:rgba(0,0,0,0.5); font-size:10pt; max-width: 600px; color:white; position:absolute; top:10px; left:10px">
     <button onclick="playPauseHander()"><span id="option">Pause</span> animation</button>
-		<button onclick="toggleLeapControl()" id="control-button">Control with Leap Motion</button>
-  		Current input mode: <span id="control">Mouse</span>
+		<!--button onclick="toggleLeapControl()" id="control-button">Control with Leap Motion</button-->
+  		<span id="control"></span>
     	<div id = "debug", style="color:red"></div>
       <div id = "debug2", style="color:green"></div>
-      Description:
-      <div id = "description", style="color:white; font-family:Georgia"></div>
+      <div id = "extra_content">
+        <div id = "description">
+        </div>
+      </div>
   	</div><div id = "board" style = "display:inline-block"></div>
   </body>
 </html>
