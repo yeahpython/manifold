@@ -109,7 +109,9 @@ The latest version of this project may be found at github.com/yeahpython/manifol
    innerWidth: fractional width of this view
   innerHeight: fractional height of this view
 	*/
-	manifold.board = function(id, width, height, left, bottom, innerWidth, innerHeight, renderer) {
+	manifold.board = function(id, width, height, left, bottom, innerWidth, innerHeight, renderer, dimensions) {
+		dimensions = dimensions || 3;
+
 		var view = {
 			left: left,
 			bottom: bottom,
@@ -118,15 +120,25 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		};
 
 		var scene = new THREE.Scene();
-		var camera = new THREE.PerspectiveCamera( 30, width / height, 0.1, 1000 );
-		camera.position.setX(30);
-		camera.position.setY(20);
-		camera.position.setZ(40);
+		var camera;
+		if (dimensions == 3) {
+			camera = new THREE.PerspectiveCamera( 30, width / height, 0.1, 1000 );
+			camera.position.setX(30);
+			camera.position.setY(20);
+			camera.position.setZ(40);
+		} else {
+			camera = new THREE.OrthographicCamera( -10, 10, 10 * height * innerHeight / width / innerWidth, -10 * height * innerHeight / width / innerWidth, 1, 10 );
+			camera.position.setZ(2);
+		}
 
 		// Prepare Orbit controls
-		controls = new THREE.OrbitControls(camera);
-		controls.target = new THREE.Vector3(0, 0, 0);
-		controls.maxDistance = 150;
+		var controls = {};
+
+		if (dimensions == 3) {
+			controls = new THREE.OrbitControls(camera);
+			controls.target = new THREE.Vector3(0, 0, 0);
+			controls.maxDistance = 150;
+		}
 
 
 		// enabled Orbit controls when a different panel is clicked.
@@ -164,14 +176,14 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 	// Adds an object representing three-dimensional space to the board.
 	// Adds axes by default, although this may change.
-	manifold.space3 = function(board, origin, spaceOption) {
+	manifold.space3 = function(board, origin, spaceOption, name) {
 		//okay for spaceOption to be undefined
-		return space(3, board, origin, spaceOption);
+		return space(3, board, origin, spaceOption, name);
 	};
 
-	manifold.space2 = function(board, origin, spaceOption) {
+	manifold.space2 = function(board, origin, spaceOption, name) {
 		//okay for spaceOption to be undefined
-		return space(2, board, origin, spaceOption);
+		return space(2, board, origin, spaceOption, name);
 	};
 
 	// Returns an approximate Jacobian of function userFunc
@@ -179,10 +191,12 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	// this takes an n-vector and returns an m by n matrix
 	manifold.approximateJacobian = function(userFunc, epsilon) {
 		// assuming 3x3 for now.
+		var name = "d" + userFunc.name;
+		$("#description")[0].innerHTML += name + ": Jacobian of function " + userFunc.name + "<br>"
 		return function(input) {
-			col1 = userFunc(new THREE.Vector3(epsilon, 0, 0).add(input)).sub(userFunc(input)).divideScalar(epsilon);
-			col2 = userFunc(new THREE.Vector3(0, epsilon, 0).add(input)).sub(userFunc(input)).divideScalar(epsilon);
-			col3 = userFunc(new THREE.Vector3(0,0, epsilon).add(input)).sub(userFunc(input)).divideScalar(epsilon);
+			col1 = userFunc.transform(new THREE.Vector3(epsilon, 0, 0).add(input)).sub(userFunc.transform(input)).divideScalar(epsilon);
+			col2 = userFunc.transform(new THREE.Vector3(0, epsilon, 0).add(input)).sub(userFunc.transform(input)).divideScalar(epsilon);
+			col3 = userFunc.transform(new THREE.Vector3(0,0, epsilon).add(input)).sub(userFunc.transform(input)).divideScalar(epsilon);
 			return new THREE.Matrix3().set(col1.x, col2.x, col3.x,
 				                           col1.y, col2.y, col3.y,
 				                           col1.z, col2.z, col3.z);
@@ -192,7 +206,8 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	// TODO: Make this work transitively.
 	manifold.warpTangentSpaceWithJacobian = function(originalSpace, targetParentSpace, jacobian, f, controlPoint) {
 		var newSpace = originalSpace.clone();
-
+		newSpace.name = "T<sub>"+f.name + "(" + controlPoint.name +")" + "</sub>" + targetParentSpace.name;
+		$("#description")[0].innerHTML += newSpace.name + ": tangent space at image of point "+controlPoint.name+" under " + f.name + "<br>";
 		// CAREFUL: Setting properties like rotation and position will no longer affect the space.
 		newSpace.matrixAutoUpdate = false;
 
@@ -209,7 +224,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 						newSpace.matrix.elements[4 * i + j] = m.elements[3 * i + j];
 					}
 				}
-				newSpace.matrix.setPosition(f(controlPoint.position));
+				newSpace.matrix.setPosition(f.transform(controlPoint.position));
 
 				//newSpace.rotation.setFromRotationMatrix()
 				newSpace.matrixWorldNeedsUpdate = true;
@@ -247,7 +262,9 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	};
 
 	// Shows the matrix of values in the jacobian.
-	manifold.showJacobian = function(jacobian, controlPoint) {
+	manifold.showJacobian = function(jacobian, controlPoint, source_dimensions, dest_dimensions) {
+		source_dimensions = source_dimensions || 3;
+		dest_dimensions = dest_dimensions || 3;
 		var matrixBox = $("<div/>")
 			.html("jacobian matrix appears here")
 			.attr("id", "jacobian_matrix")
@@ -278,7 +295,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			update: function() {
 				brackets.html("");
 				var M = jacobian(controlPoint.position).toArray();
-				for (var i = 0; i < 3; i++) {
+				for (var i = 0; i < source_dimensions; i++) {
 					var column = $("<div/>")
 						.css({
 							display: "inline-block",
@@ -286,7 +303,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 							padding:"3px"
 							})
 						.appendTo(brackets);
-					for (var j = 0; j < 3; j++) {
+					for (var j = 0; j < dest_dimensions; j++) {
 						column.append(M[i * 3 + j].toFixed(2));
 						column.append("<br>");
 					}
@@ -316,7 +333,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		updateRules.push({
 			update:function(){
 				for (var i = 0; i < object.geometry.vertices.length; i++) {
-					mesh.geometry.vertices[i] = userFunc(object.geometry.vertices[i]);
+					mesh.geometry.vertices[i] = userFunc.transform(object.geometry.vertices[i]);
 				}
 				mesh.geometry.verticesNeedUpdate = true;
 			}
@@ -335,6 +352,15 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	};
 
 
+	manifold.mathFunction = function(f, name) {
+		$("#description")[0].innerHTML += name + ": some function<br>";
+		return {
+			transform: f,
+			name: name
+		};
+	}
+
+
 	manifold.translateBasisWithFunction = function(basis, space, userFunc) {
 		var basisCopy = basis.clone();
 		basisCopy.position = new THREE.Vector3();
@@ -342,13 +368,18 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 		updateRules.push({
 			update:function(){
-				basisCopy.position.copy(userFunc(cursor));
+				basisCopy.position.copy(userFunc.transform(cursor));
 			}
 		});
 		return basisCopy;
 	};
 
-	manifold.controlPoint = function(board, space, dimensions) {
+	manifold.controlPoint = function(board, space, dimensions, name) {
+		var label = $("<div/>")
+			.attr("id", "point_"+name)
+			.html(name + ": point in "+ space.name)
+			.appendTo($("#description"));
+		//$("#description")[0].innerHTML += name + ": point in "+ space.name;
 		dimensions = dimensions || 3;
 		console.log(dimensions);
 		var cursorSurface = new THREE.SphereGeometry(2.5, 100, 100);
@@ -374,30 +405,42 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		var plane = new THREE.Mesh(
 			new THREE.PlaneBufferGeometry(500, 500, 8, 8),
 			new THREE.MeshBasicMaterial({color: 0x0000ff}));
+		plane.material.transparent = true;
+		plane.material.opacity = 0.3;
 		plane.visible = false;
 		space.add(plane);
 		var offset = new THREE.Vector3();
 
+		// Allows you to select objects and possibly drag them around
 		document.addEventListener('mousedown', function (event) {
 			var mouse_pos = getRelativeMousePositionInBoard(event, board);
 			mouse.x = mouse_pos.x;
 			mouse.y = mouse_pos.y;
-			if (Math.abs(mouse_pos.x) < 1 && Math.abs(mouse_pos.y) < 1) {
+			if (Math.abs(mouse_pos.x) < 1 && Math.abs(mouse_pos.y) < 1 && manifold.animating) {
 				space.updateMatrixWorld();
 				var intersects = raycaster.intersectObject( funMesh);
 				if (intersects.length > 0) {
 					board.controls.enabled = false;
 					selection = intersects[0].object;
 					selection.material.color.set(0x00ff00);
+					$("#point_" + name).css("color", "green");
 					var plane_intersects = raycaster.intersectObject(plane);
 					//offset.copy(plane_intersects[0].point).sub(plane.position);
-					offset.copy(selection.position);
-					offset.sub(plane_intersects[0].point);
+					if (plane_intersects.length > 0) {
+						offset.copy(selection.position);
+						offset.sub(plane_intersects[0].point);
+					} else {
+						console.log("error, raycaster can't hit plane! Maybe the plane" +
+							" is the wrong size or facing the wrong direction.");
+						console.log(raycaster.ray.origin);
+						console.log(raycaster.ray.direction);
+						console.log(plane);
+					}
 				}
 			}
 		}, false);
 
-
+		// Moves selected object if there is one, and does highlighting
 		document.addEventListener('mousemove', function (event) {
 			// code adapted from this tutorial for dragging and dropping objects:
 			// https://www.script-tutorials.com/webgl-with-three-js-lesson-10/
@@ -409,7 +452,11 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			vector.unproject(board.camera);
 
 			// Set the raycaster position
-			raycaster.set( board.camera.position, vector.sub( board.camera.position ).normalize() );
+			if (dimensions == 3) {
+				raycaster.set(board.camera.position, vector.sub( board.camera.position ).normalize());
+			} else {
+				raycaster.set(vector, new THREE.Vector3(0,0,1));
+			}
 			if (selection) {
 				// Check the position where the plane is intersected
 				var intersects = raycaster.intersectObject(plane);
@@ -417,14 +464,18 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				// selection.position.copy(intersects[0].point.sub(offset));
 				selection.position.copy(intersects[0].point.add(offset));
 			} else {
-				funMesh.material.color.set(0xff0000);
-				funMesh.material.opacity = 0;
+				// funMesh.material.color.set(0xff0000);
+				// funMesh.material.opacity = 0;
 				// Update position of the plane if need
 				var object_intersects = raycaster.intersectObject(funMesh);
 				if (object_intersects.length > 0) {
-					object_intersects[0].object.material.color.set(0xffff00);
-					object_intersects[0].object.material.opacity = 0.1;
-					plane.position.copy(object_intersects[0].object.position);
+					if (object_intersects[0].object !== funMesh) {
+						throw "Unexpected collision";
+					}
+					funMesh.material.color.set(0xffff00);
+					$("#point_" + name).css("color", "yellow");
+					funMesh.material.opacity = 0.1;
+					plane.position.copy(funMesh.position);
 					if (dimensions == 2) {
 						plane.position.setZ(0);
 					}
@@ -434,9 +485,14 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 					// console.log(plane.position);
 					if (dimensions == 2) {
 						// no looking required because angle is fixed.
+						plane.lookAt(new THREE.Vector3(0,0,-1).add(plane.position));
 					} else {
 						plane.lookAt(board.camera.position);
 					}
+				} else {
+					$("#point_" + name).css("color", "");
+					funMesh.material.color.set(0xff0000);
+					funMesh.material.opacity = 0;
 				}
 			}
 
@@ -447,28 +503,34 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			}
 			selection = null;
 		}, false);
+		funMesh.name = name;
 		return funMesh;
 	};
 
 	// controlPoint should be an Object3D with a position where
 	// we want to center the gridlines.
-	manifold.nearbyGridLines = function(space, controlPoint) {
+	manifold.nearbyGridLines = function(space, controlPoint, dimensions) {
+		dimensions = dimensions || 3;
 		var gridLines = new THREE.Geometry();
 		var m = 1;
 		var gridSize = 2;
 		var cuts = 10;
 		var step = 1 / cuts;
+		k_m = (dimensions == 2) ? 0 : m;
 		for (var i = -m; i <= m; i++) {
 			for (var j = -m; j <= m; j++) {
-				for (var k = -m; k <= m; k++) {
+				for (var k = -k_m; k <= k_m; k++) {
 					for (var s = 0; s < cuts; s++) {
 						gridLines.vertices.push(
 							new THREE.Vector3(i+s*step, j, k).multiplyScalar(gridSize),
 							new THREE.Vector3(i+(s+1)*step, j, k).multiplyScalar(gridSize),
 							new THREE.Vector3(i, j+s*step, k).multiplyScalar(gridSize),
-							new THREE.Vector3(i, j+(s+1)*step, k).multiplyScalar(gridSize),
-							new THREE.Vector3(i, j, k+s*step).multiplyScalar(gridSize),
-							new THREE.Vector3(i, j, k+(s+1)*step).multiplyScalar(gridSize));
+							new THREE.Vector3(i, j+(s+1)*step, k).multiplyScalar(gridSize));
+						if (dimensions == 3) {
+							gridLines.vertices.push(
+								new THREE.Vector3(i, j, k+s*step).multiplyScalar(gridSize),
+								new THREE.Vector3(i, j, k+(s+1)*step).multiplyScalar(gridSize));
+						}
 					}
 				}
 			}
@@ -528,6 +590,8 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		if (dimensions != 3 && dimensions != 2) {
 			throw "Not dealing with less than three dimensions at the moment";
 		}
+
+		$("#description")[0].innerHTML += dimensions + "-dimensional basis in " + space.name + "<br>"
 
 		var basisLength = 1.5;
 
@@ -676,7 +740,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		space.updateMatrixWorld();
 		var newPointCloud = new THREE.PointCloud(pointCloud.geometry.clone(), pointCloud.material);
 		for (var i = 0; i < newPointCloud.geometry.vertices.length; i++) {
-			newPointCloud.geometry.vertices[i] = userFunc(newPointCloud.geometry.vertices[i]);
+			newPointCloud.geometry.vertices[i] = userFunc.transform(newPointCloud.geometry.vertices[i]);
 		}
 		space.add(newPointCloud);
 	};
@@ -685,6 +749,8 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	manifold.createTangentSpace = function(parent, controlPoint) {
 		// controlPoint should be an object with a Vector3 position member.
 		var space = new THREE.Object3D();
+		space.name = "T<sub>" + controlPoint.name + "</sub>" + parent.name;
+		$("#description")[0].innerHTML += space.name + ": Tangent space of manifold "+ parent.name + " at point " + controlPoint.name + "<br>";
 		parent.add(space);
 		updateRules.push(
 		{	update:function(){
@@ -698,7 +764,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		var space = new THREE.Object3D();
 		parent.add(space);
 		updateRules.push({update:function(){
-			space.position.copy(userFunc(originalSpace.position));
+			space.position.copy(userFunc.transform(originalSpace.position));
 		}});
 		return space;
 	};
@@ -720,12 +786,27 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	Makes a space (Secretly a glorified THREE.Object3D)
 	gives the space axes, and puts the space in board at the given origin
 	*/
-	function space(dimension, board, origin, spaceOption) {
+	function space(dimension, board, origin, spaceOption, name) {
 		// okay for spaceOption to be undefined
 
 		if (dimension != 3 && dimension != 2) {
 			throw "Dimensions other than 3 not supported";
 		}
+		var label = $("<div/>")
+			.attr("id", "space_"+name)
+			.html(name + ": " + dimension + "-dimensional space")
+			.appendTo($("#description"));
+
+		// Moves selected object if there is one, and does highlighting
+		document.addEventListener('mousemove', function (event) {
+			// code adapted from this tutorial for dragging and dropping objects:
+			// https://www.script-tutorials.com/webgl-with-three-js-lesson-10/
+			event.preventDefault();
+			var mouse_pos = getRelativeMousePositionInBoard(event, board);
+			var over = (Math.abs(mouse_pos.x) < 1 && Math.abs(mouse_pos.y) < 1);
+			$("#space_" + name).css("font-weight", over ? "bold": "");
+		}, false);
+		//$("#description")[0].innerHTML += name + ": " + dimension + "-dimensional space<br>";
 		var plot = new THREE.Object3D();
 		var axes = new THREE.Geometry();
 
@@ -812,6 +893,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		}
 
 		plot.position.add(origin);
+		plot.name = name;
 		return plot;
 	}
 

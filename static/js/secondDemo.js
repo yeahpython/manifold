@@ -9,6 +9,14 @@ var spherical = function(vector) {
 	return new THREE.Vector3(z * Math.sin(x), z * Math.cos(x) * Math.sin(y), z * Math.cos(x) * Math.cos(y));
 };
 
+var spherical2D = function(vector) {
+	//return new THREE.Vector3(vector.x, vector.y + Math.sin(vector.x), vector.z);
+	z = 5;
+	x = vector.x * 0.5;
+	y = vector.y * 0.5;
+	return new THREE.Vector3(z * Math.sin(x), z * Math.cos(x) * Math.sin(y), z * Math.cos(x) * Math.cos(y));
+};
+
 /*
 This function takes planes aligned with the xy plane to toruses.
  */
@@ -68,8 +76,6 @@ Linear transformations
 
 */
 
-var raycaster = new THREE.Raycaster();
-
 function getRandomColor() {
     var letters = '0123456789ABCDEF'.split('');
     var color = '#';
@@ -84,19 +90,19 @@ var foo = function() {
 	renderer.setClearColor(0x000000, 1.0);
 
 	//var board = manifold.board("board", window.innerWidth / 2, window.innerHeight - 10);
-	var board = manifold.board("board", window.innerWidth, window.innerHeight, 0.4, 0, 0.3, 1, renderer);
-	var board_2 = manifold.board("board", window.innerWidth, window.innerHeight, 0.7, 0, 0.3, 1, renderer);
-	var board_3 = manifold.board("board", window.innerWidth, window.innerHeight, 0, 0, 0.4, 1, renderer);
-	var space_a = manifold.space3(board, new THREE.Vector3(0,0,0), "axes");
-	var space_b = manifold.space3(board_2, new THREE.Vector3(0,0,0), "axes");
-	var space_c = manifold.space2(board_3, new THREE.Vector3(0,0,0), "axes");
+	var board = manifold.board("board", window.innerWidth, window.innerHeight, 0.7, 0, 0.3, 1, renderer);
+	var board_2 = manifold.board("board", window.innerWidth, window.innerHeight, 0.4, 0, 0.3, 1, renderer);
+	var board_3 = manifold.board("board", window.innerWidth, window.innerHeight, 0, 0, 0.4, 1, renderer, 2);
+	var space_a = manifold.space3(board, new THREE.Vector3(0,0,0), "axes", "C");
+	var space_b = manifold.space3(board_2, new THREE.Vector3(0,0,0), "axes", "B");
+	var space_c = manifold.space2(board_3, new THREE.Vector3(0,0,0), "axes", "A");
 
-	var controlPoint2D = manifold.controlPoint(board_3, space_c, 2);
+	var controlPoint2D = manifold.controlPoint(board_3, space_c, 2, "x");
 
 	var tangentSpace2D = manifold.createTangentSpace(space_c, controlPoint2D);
 	var basicBasis2D = manifold.addUnitBasis(2, tangentSpace2D);
 
-	var controlPoint = manifold.controlPoint(board, space_a);
+	// var controlPoint = manifold.controlPoint(board, space_a, 3, "y");
 
 	/*
 	// Add a surface that is mapped through the function
@@ -106,16 +112,28 @@ var foo = function() {
 	// manifold.controlSurfacePositionWithControlPoint(surface, controlPoint);
 	*/
 
-	var tangentSpace = manifold.createTangentSpace(space_a, controlPoint);
-	var basicBasis = manifold.addUnitBasis(3, tangentSpace);
+	//var tangentSpace = manifold.createTangentSpace(space_a, controlPoint);
+	//var basicBasis = manifold.addUnitBasis(3, tangentSpace);
+
+	var f = manifold.mathFunction(spherical2D, "f");
 
 	// How can I make Jacobian operations automatic?
-	var D_Spherical = manifold.approximateJacobian(spherical, 0.0001);
-	var transformedTangentSpace = manifold.warpTangentSpaceWithJacobian(tangentSpace, space_b, D_Spherical, spherical, controlPoint);
-	var jacobianMatrixDisplay = manifold.showJacobian(D_Spherical, controlPoint);
+	var D_Spherical = manifold.approximateJacobian(f, 0.0001);
+	var transformedTangentSpace = manifold.warpTangentSpaceWithJacobian(tangentSpace2D, space_b, D_Spherical, f, controlPoint2D);
 
-	var sneakyGridLines = manifold.nearbyGridLines(space_a, controlPoint);
-	var warpyGridLines = manifold.image(spherical, sneakyGridLines, space_b, true);
+	var double_spherical = function(input) {
+		return spherical(spherical2D(input));
+	};
+
+	var g = manifold.mathFunction(double_spherical, "g");
+	var D_double_spherical = manifold.approximateJacobian(g, 0.0001);
+
+	var transformedTangentSpace2 = manifold.warpTangentSpaceWithJacobian(transformedTangentSpace, space_a, D_double_spherical, g, controlPoint2D);
+	var jacobianMatrixDisplay = manifold.showJacobian(D_Spherical, controlPoint2D, 2);
+
+	var sneakyGridLines = manifold.nearbyGridLines(space_c, controlPoint2D, 2);
+	var warpyGridLines = manifold.image(f, sneakyGridLines, space_b, true);
+	var warpyGridLines2 = manifold.image(g, sneakyGridLines, space_a, true);
 
 	manifold.render();
 };
