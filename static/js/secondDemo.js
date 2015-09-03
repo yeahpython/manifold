@@ -84,10 +84,17 @@ var foo = function() {
 	renderer.setClearColor(0x000000, 1.0);
 
 	//var board = manifold.board("board", window.innerWidth / 2, window.innerHeight - 10);
-	var board = manifold.board("board", window.innerWidth, window.innerHeight, 0, 0, 0.5, 1, renderer);
-	var board_2 = manifold.board("board", window.innerWidth, window.innerHeight, 0.5, 0, 0.5, 1, renderer);
+	var board = manifold.board("board", window.innerWidth, window.innerHeight, 0.4, 0, 0.3, 1, renderer);
+	var board_2 = manifold.board("board", window.innerWidth, window.innerHeight, 0.7, 0, 0.3, 1, renderer);
+	var board_3 = manifold.board("board", window.innerWidth, window.innerHeight, 0, 0, 0.4, 1, renderer);
 	var space_a = manifold.space3(board, new THREE.Vector3(0,0,0), "axes");
 	var space_b = manifold.space3(board_2, new THREE.Vector3(0,0,0), "axes");
+	var space_c = manifold.space2(board_3, new THREE.Vector3(0,0,0), "axes");
+
+	var controlPoint2D = manifold.controlPoint(board_3, space_c, 2);
+
+	var tangentSpace2D = manifold.createTangentSpace(space_c, controlPoint2D);
+	var basicBasis2D = manifold.addUnitBasis(2, tangentSpace2D);
 
 	var controlPoint = manifold.controlPoint(board, space_a);
 

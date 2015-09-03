@@ -41,13 +41,13 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		opacity:0.1
 	});
 
-	var controlPointMaterial = new THREE.MeshBasicMaterial({
+	/*var controlPointMaterial = new THREE.MeshBasicMaterial({
 		color:0xffffff,
 		transparent:true,
 		opacity:0.3,
 		blending: THREE.AdditiveBlending,
 		depthWrite:false
-	});
+	});*/
 
 	var gridMaterial = new THREE.LineBasicMaterial({
 		color: 0xaaaaaa,
@@ -72,7 +72,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		for (var i = 0; i < cursorSurface.vertices.length; i++) {
 			cursorSurface.vertices[i] = cursorSurface.vertices[i].clamp(min,max);
 		}
-		return cursorSurface
+		return cursorSurface;
 	})();
 
 	// inputs
@@ -115,7 +115,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			bottom: bottom,
 			width: innerWidth,
 			height: innerHeight
-		}
+		};
 
 		var scene = new THREE.Scene();
 		var camera = new THREE.PerspectiveCamera( 30, width / height, 0.1, 1000 );
@@ -167,6 +167,11 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	manifold.space3 = function(board, origin, spaceOption) {
 		//okay for spaceOption to be undefined
 		return space(3, board, origin, spaceOption);
+	};
+
+	manifold.space2 = function(board, origin, spaceOption) {
+		//okay for spaceOption to be undefined
+		return space(2, board, origin, spaceOption);
 	};
 
 	// Returns an approximate Jacobian of function userFunc
@@ -257,22 +262,22 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				color:"white"
 			})
 			.prependTo($("body"));
+
+		matrixBox.html("jacobian matrix:<br>");
+		var brackets = $("<div/>")
+			.css({
+				display: "inline-block",
+				"border-right": "1px solid",
+				"border-left": "1px solid",
+				"border-radius": "5px",
+				"text-align": "right",
+				padding:"3px"
+				})
+			.appendTo(matrixBox);
 		updateRules.push({
 			update: function() {
-				matrixBox.html("jacobian matrix:<br>");
-				var m = jacobian(controlPoint.position);
-				var M = m.toArray();
-				var brackets = $("<div/>")
-					.css({
-						display: "inline-block",
-						"border-right": "1px solid",
-						"border-left": "1px solid",
-						"border-radius": "5px",
-						"text-align": "right",
-						padding:"3px"
-						})
-					.appendTo(matrixBox);
-
+				brackets.html("");
+				var M = jacobian(controlPoint.position).toArray();
 				for (var i = 0; i < 3; i++) {
 					var column = $("<div/>")
 						.css({
@@ -343,13 +348,27 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		return basisCopy;
 	};
 
-	manifold.controlPoint = function(board, space) {
+	manifold.controlPoint = function(board, space, dimensions) {
+		dimensions = dimensions || 3;
+		console.log(dimensions);
 		var cursorSurface = new THREE.SphereGeometry(2.5, 100, 100);
+		var controlPointMaterial = new THREE.MeshBasicMaterial({
+			color:0xffffff,
+			transparent:true,
+			opacity:0.3,
+			blending: THREE.AdditiveBlending,
+			depthWrite:false
+		});
 		var funMesh = new THREE.Mesh(cursorSurface, controlPointMaterial);
 		space.add(funMesh);
-		funMesh.position.set(2,2,2);
+		if (dimensions == 3) {
+			funMesh.position.set(2, 2, 2);
+		} else if (dimensions == 2) {
+			funMesh.position.set(2, 2, 0);
+		}
 		manifold.controlPoints.push(funMesh);
 
+		var raycaster = new THREE.Raycaster();
 
 		var selection = null;
 		var plane = new THREE.Mesh(
@@ -363,16 +382,18 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			var mouse_pos = getRelativeMousePositionInBoard(event, board);
 			mouse.x = mouse_pos.x;
 			mouse.y = mouse_pos.y;
-			space.updateMatrixWorld();
-			var intersects = raycaster.intersectObjects( manifold.controlPoints);
-			if (intersects.length > 0) {
-				board.controls.enabled = false;
-				selection = intersects[0].object;
-				selection.material.color.set(0x00ff00);
-				var plane_intersects = raycaster.intersectObject(plane);
-				offset.copy(plane_intersects[0].point).sub(plane.position);
-				offset.copy(selection.position);
-				offset.sub(plane_intersects[0].point);
+			if (Math.abs(mouse_pos.x) < 1 && Math.abs(mouse_pos.y) < 1) {
+				space.updateMatrixWorld();
+				var intersects = raycaster.intersectObject( funMesh);
+				if (intersects.length > 0) {
+					board.controls.enabled = false;
+					selection = intersects[0].object;
+					selection.material.color.set(0x00ff00);
+					var plane_intersects = raycaster.intersectObject(plane);
+					//offset.copy(plane_intersects[0].point).sub(plane.position);
+					offset.copy(selection.position);
+					offset.sub(plane_intersects[0].point);
+				}
 			}
 		}, false);
 
@@ -396,21 +417,26 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				// selection.position.copy(intersects[0].point.sub(offset));
 				selection.position.copy(intersects[0].point.add(offset));
 			} else {
-				for (var i = 0; i < manifold.controlPoints.length; i++) {
-					manifold.controlPoints[i].material.color.set(0xff0000);
-					manifold.controlPoints[i].material.opacity = 0;
-				}
+				funMesh.material.color.set(0xff0000);
+				funMesh.material.opacity = 0;
 				// Update position of the plane if need
-				var object_intersects = raycaster.intersectObjects(manifold.controlPoints);
+				var object_intersects = raycaster.intersectObject(funMesh);
 				if (object_intersects.length > 0) {
 					object_intersects[0].object.material.color.set(0xffff00);
 					object_intersects[0].object.material.opacity = 0.1;
 					plane.position.copy(object_intersects[0].object.position);
+					if (dimensions == 2) {
+						plane.position.setZ(0);
+					}
 					// console.log(plane.position);
 
 					//plane.position.setFromMatrixPosition( object_intersects[0].object.matrixWorld );
 					// console.log(plane.position);
-					plane.lookAt(board.camera.position);
+					if (dimensions == 2) {
+						// no looking required because angle is fixed.
+					} else {
+						plane.lookAt(board.camera.position);
+					}
 				}
 			}
 
@@ -499,36 +525,37 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	};
 
 	manifold.addUnitBasis = function(dimensions, space) {
-		if (dimensions != 3) {
+		if (dimensions != 3 && dimensions != 2) {
 			throw "Not dealing with less than three dimensions at the moment";
 		}
 
 		var basisLength = 1.5;
 
 		var basis = new THREE.Object3D();
+		space.add(basis);
 
 		var xUnit = new THREE.Geometry();
 		xUnit.vertices.push(
 			new THREE.Vector3( 0, 0, 0 ),
 			new THREE.Vector3( basisLength, 0, 0 ));
-		var i = new THREE.Line( xUnit, xAxisMaterial, THREE.LinePieces);
+		basis.add(new THREE.Line( xUnit, xAxisMaterial, THREE.LinePieces));
 
 		var yUnit = new THREE.Geometry();
 		yUnit.vertices.push(
 			new THREE.Vector3( 0, 0, 0 ),
 			new THREE.Vector3( 0, basisLength, 0 ));
-		var j = new THREE.Line( yUnit, yAxisMaterial, THREE.LinePieces);
+		basis.add(new THREE.Line( yUnit, yAxisMaterial, THREE.LinePieces));
 
-		var zUnit = new THREE.Geometry();
-		zUnit.vertices.push(
-			new THREE.Vector3( 0, 0, 0 ),
-			new THREE.Vector3( 0, 0, basisLength ));
-		var k = new THREE.Line( zUnit, zAxisMaterial, THREE.LinePieces);
-
-		space.add(basis);
-		basis.add(i);
+		if (dimensions == 3) {
+			var zUnit = new THREE.Geometry();
+			zUnit.vertices.push(
+				new THREE.Vector3( 0, 0, 0 ),
+				new THREE.Vector3( 0, 0, basisLength ));
+			basis.add(new THREE.Line( zUnit, zAxisMaterial, THREE.LinePieces));
+		}
+		/* basis.add(i);
 		basis.add(j);
-		basis.add(k);
+		basis.add(k); */
 
 		var addExtraLines = false;
 		if (addExtraLines) {
@@ -537,23 +564,26 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			extraLines.vertices.push(
 				new THREE.Vector3(b, 0, 0),
 				new THREE.Vector3(b, b, 0),
-				new THREE.Vector3(b, 0, 0),
-				new THREE.Vector3(b, 0, b),
 				new THREE.Vector3(0, b, 0),
-				new THREE.Vector3(b, b, 0),
-				new THREE.Vector3(0, b, 0),
-				new THREE.Vector3(0, b, b),
-				new THREE.Vector3(0, 0, b),
-				new THREE.Vector3(b, 0, b),
-				new THREE.Vector3(0, 0, b),
-				new THREE.Vector3(0, b, b),
-				new THREE.Vector3(0, b, b),
-				new THREE.Vector3(b, b, b),
-				new THREE.Vector3(b, 0, b),
-				new THREE.Vector3(b, b, b),
-				new THREE.Vector3(b, b, 0),
-				new THREE.Vector3(b, b, b)
-				);
+				new THREE.Vector3(b, b, 0));
+			if (dimensions == 3) {
+				extraLines.vertices.push(
+					new THREE.Vector3(b, 0, 0),
+					new THREE.Vector3(b, 0, b),
+					new THREE.Vector3(0, b, 0),
+					new THREE.Vector3(0, b, b),
+					new THREE.Vector3(0, 0, b),
+					new THREE.Vector3(b, 0, b),
+					new THREE.Vector3(0, 0, b),
+					new THREE.Vector3(0, b, b),
+					new THREE.Vector3(0, b, b),
+					new THREE.Vector3(b, b, b),
+					new THREE.Vector3(b, 0, b),
+					new THREE.Vector3(b, b, b),
+					new THREE.Vector3(b, b, 0),
+					new THREE.Vector3(b, b, b)
+					);
+			}
 			var additionalLines = new THREE.Line(extraLines, parallelogramLineMaterial, THREE.LinePieces);
 
 			basis.add(additionalLines);
@@ -693,7 +723,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	function space(dimension, board, origin, spaceOption) {
 		// okay for spaceOption to be undefined
 
-		if (dimension != 3) {
+		if (dimension != 3 && dimension != 2) {
 			throw "Dimensions other than 3 not supported";
 		}
 		var plot = new THREE.Object3D();
@@ -705,51 +735,72 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				new THREE.Vector3( -10, 0, 0 ),
 				new THREE.Vector3( 10, 0, 0 ),
 				new THREE.Vector3( 0, -10, 0 ),
-				new THREE.Vector3( 0, 10, 0 ),
-				new THREE.Vector3( 0, 0, -10 ),
-				new THREE.Vector3( 0, 0, 10 ));
+				new THREE.Vector3( 0, 10, 0 ));
+			if (dimension == 3) {
+				axes.vertices.push(
+					new THREE.Vector3( 0, 0, -10 ),
+					new THREE.Vector3( 0, 0, 10 ));
+			}
 			line = new THREE.Line( axes, linematerial, THREE.LinePieces);
 		} else if (spaceOption == "box"){
-			axes.vertices.push(
-				//triple
-				new THREE.Vector3( -10, -10, -10 ),
-				new THREE.Vector3( 10, -10, -10 ),
+			if (dimension == 2) {
+				axes.vertices.push(
+					//triple
+					new THREE.Vector3( -10, -10, 0 ),
+					new THREE.Vector3( 10, -10, 0 ),
 
-				new THREE.Vector3( -10, -10, -10 ),
-				new THREE.Vector3( -10, 10, -10 ),
-				new THREE.Vector3( -10, -10, -10 ),
-				new THREE.Vector3( -10, -10, 10 ),
+					new THREE.Vector3( -10, -10, 0 ),
+					new THREE.Vector3( -10, 10, 0),
 
-				// L-shape
-				new THREE.Vector3( 10, -10, -10 ),
-				new THREE.Vector3( 10, 10, -10 ),
+					// L-shape
+					new THREE.Vector3( 10, -10, 0 ),
+					new THREE.Vector3( 10, 10, 0 ),
 
-				new THREE.Vector3( 10, -10, -10 ),
-				new THREE.Vector3( 10, -10, 10 ),
+					// L-shape
+					new THREE.Vector3( -10, 10, 0 ),
+					new THREE.Vector3( 10, 10, 0 ));
+			} else {
+				axes.vertices.push(
+					//triple
+					new THREE.Vector3( -10, -10, -10 ),
+					new THREE.Vector3( 10, -10, -10 ),
 
-				// L-shape
-				new THREE.Vector3( -10, 10, -10 ),
-				new THREE.Vector3( 10, 10, -10 ),
+					new THREE.Vector3( -10, -10, -10 ),
+					new THREE.Vector3( -10, 10, -10 ),
+					new THREE.Vector3( -10, -10, -10 ),
+					new THREE.Vector3( -10, -10, 10 ),
 
-				new THREE.Vector3( -10, 10, -10 ),
-				new THREE.Vector3( -10, 10, 10 ),
+					// L-shape
+					new THREE.Vector3( 10, -10, -10 ),
+					new THREE.Vector3( 10, 10, -10 ),
 
-				// L-shape
-				new THREE.Vector3( -10, -10, 10 ),
-				new THREE.Vector3( 10, -10, 10 ),
+					new THREE.Vector3( 10, -10, -10 ),
+					new THREE.Vector3( 10, -10, 10 ),
 
-				new THREE.Vector3( -10, -10, 10 ),
-				new THREE.Vector3( -10, 10, 10 ),
+					// L-shape
+					new THREE.Vector3( -10, 10, -10 ),
+					new THREE.Vector3( 10, 10, -10 ),
 
-				// triple
-				new THREE.Vector3( -10, 10, 10 ),
-				new THREE.Vector3( 10, 10, 10 ),
+					new THREE.Vector3( -10, 10, -10 ),
+					new THREE.Vector3( -10, 10, 10 ),
 
-				new THREE.Vector3( 10, -10, 10 ),
-				new THREE.Vector3( 10, 10, 10 ),
+					// L-shape
+					new THREE.Vector3( -10, -10, 10 ),
+					new THREE.Vector3( 10, -10, 10 ),
 
-				new THREE.Vector3( 10, 10, -10 ),
-				new THREE.Vector3( 10, 10, 10 ));
+					new THREE.Vector3( -10, -10, 10 ),
+					new THREE.Vector3( -10, 10, 10 ),
+
+					// triple
+					new THREE.Vector3( -10, 10, 10 ),
+					new THREE.Vector3( 10, 10, 10 ),
+
+					new THREE.Vector3( 10, -10, 10 ),
+					new THREE.Vector3( 10, 10, 10 ),
+
+					new THREE.Vector3( 10, 10, -10 ),
+					new THREE.Vector3( 10, 10, 10 ));
+			}
 			line = new THREE.Line( axes, linematerial, THREE.LinePieces);
 		}
 
