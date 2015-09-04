@@ -5,11 +5,11 @@
 
 #jacobian_matrix {
 	padding: 5px;
-	display: block;
+	display: inline-block;
 	background-color: black;
 }
 
-#matrix_brackets {
+.matrix_brackets {
 	display: inline-block;
 	border-right: 1px solid;
 	border-left: 1px solid;
@@ -18,14 +18,24 @@
 	padding: 3px;
 }
 
-#matrix_column {
+.matrix_column {
 	display: inline-block;
 	text-align: right;
 	padding: 3px;
+	width: 50px;
+	font-family: monospace;
 }
 
 .symbol {
-	min-width: 100px;
+	min-width: 50px;
 	display: inline-block;
 	text-align: right;
+	font-style: italic;
+	vertical-align: top;
+}
+
+.symbol_explanation {
+	min-width: 50px;
+	display: inline-block;
+	vertical-align: top;
 }

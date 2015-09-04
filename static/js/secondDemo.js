@@ -2,7 +2,6 @@
 This function takes planes aligned with the xy plane to spheres.
  */
 var spherical = function(vector) {
-	//return new THREE.Vector3(vector.x, vector.y + Math.sin(vector.x), vector.z);
 	z = vector.z;
 	x = vector.x * 0.5;
 	y = vector.y * 0.5;
@@ -10,11 +9,18 @@ var spherical = function(vector) {
 };
 
 var spherical2D = function(vector) {
-	//return new THREE.Vector3(vector.x, vector.y + Math.sin(vector.x), vector.z);
-	z = 5;
+	z = vector.z + 5; // vector.z is always zero, but I don't like the no-inverse errors.
 	x = vector.x * 0.5;
 	y = vector.y * 0.5;
 	return new THREE.Vector3(z * Math.sin(x), z * Math.cos(x) * Math.sin(y), z * Math.cos(x) * Math.cos(y));
+};
+
+var squiggle_scale = 0.3;
+var squiggle = function(vector) {
+	z = vector.z; // vector.z is always zero, but I don't like the no-inverse errors.
+	x = vector.x;
+	y = vector.y;
+	return new THREE.Vector3(x + Math.sin(y * squiggle_scale), y + Math.cos(z * squiggle_scale), z * Math.cos(x * squiggle_scale));
 };
 
 /*
@@ -60,20 +66,20 @@ var toggleLeapControl = function(){
 
 
 /*
-
-The interface still seems kind of messy. I'm tempted to turn a lot of these functions into private methods
-and instead have the library have public methods such as "VisualizeJacobian(function)"
-
-What do math teachers want? They probably want the function calls to match mathematics as closely as possible.
-
-Need a better idea of what the target usage is
-Things to teach:
-Dot products
-Orthogonality
-Null Space
-Column Space
-Linear transformations
-
+Thoughts:
+ - The interface still seems messy. I should consider
+   turning some of these functions into private methods
+   and instead have the library have public methods such
+   as "VisualizeJacobian(function)"
+ - What do math teachers want? They probably want the function
+   calls to match mathematics as closely as possible.
+ - I need a better idea of what the target usage is.
+ - Things to teach:
+  - Dot products
+  - Orthogonality
+  - Null Space
+  - Column Space
+  - Linear transformations
 */
 
 function getRandomColor() {
@@ -90,50 +96,49 @@ var foo = function() {
 	renderer.setClearColor(0x000000, 1.0);
 
 	//var board = manifold.board("board", window.innerWidth / 2, window.innerHeight - 10);
-	var board = manifold.board("board", window.innerWidth, window.innerHeight, 0.6, 0, 0.4, 0.5, renderer);
-	var board_2 = manifold.board("board", window.innerWidth, window.innerHeight, 0.6, 0.5, 0.4, 0.5, renderer);
-	var board_3 = manifold.board("board", window.innerWidth, window.innerHeight, 0, 0, 0.6, 1, renderer, 2);
-	var space_a = manifold.space3(board, new THREE.Vector3(0,0,0), "axes", "C");
-	var space_b = manifold.space3(board_2, new THREE.Vector3(0,0,0), "axes", "B");
-	var space_c = manifold.space2(board_3, new THREE.Vector3(0,0,0), "axes", "A");
+	var board_A = manifold.board("boards", window.innerWidth, window.innerHeight, 0, 0, 0.6, 1, renderer, 2);
+	var board_B = manifold.board("boards", window.innerWidth, window.innerHeight, 0.6, 0.5, 0.4, 0.5, renderer);
+	var board_C = manifold.board("boards", window.innerWidth, window.innerHeight, 0.6, 0, 0.4, 0.5, renderer);
 
-	var controlPoint2D = manifold.controlPoint(board_3, space_c, 2, "x");
+	var space_A = manifold.space2(board_A, new THREE.Vector3(0,0,0), "axes", "A");
+	var space_B = manifold.space3(board_B, new THREE.Vector3(0,0,0), "axes", "B");
+	var space_C = manifold.space3(board_C, new THREE.Vector3(0,0,0), "axes", "C");
 
-	var tangentSpace2D = manifold.createTangentSpace(space_c, controlPoint2D);
+	var controlPoint2D = manifold.controlPoint(board_A, space_A, 2, "x");
+
+	var tangentSpace2D = manifold.createTangentSpace(space_A, controlPoint2D);
 	var basicBasis2D = manifold.addUnitBasis(2, tangentSpace2D);
 
-	// var controlPoint = manifold.controlPoint(board, space_a, 3, "y");
+	// var controlPoint = manifold.controlPoint(board_C, space_C, 3, "y");
 
 	/*
 	// Add a surface that is mapped through the function
-	var surface = manifold.surface("cube", space_a);
+	var surface = manifold.surface("cube", space_C);
 	manifold.controlSurfacePositionWithCursor(surface);
-	var surface2 = manifold.image(spherical, surface, space_b);
+	var surface2 = manifold.image(spherical, surface, space_B);
 	// manifold.controlSurfacePositionWithControlPoint(surface, controlPoint);
 	*/
 
-	//var tangentSpace = manifold.createTangentSpace(space_a, controlPoint);
+	//var tangentSpace = manifold.createTangentSpace(space_C, controlPoint);
 	//var basicBasis = manifold.addUnitBasis(3, tangentSpace);
 
 	var f = manifold.mathFunction(spherical2D, "f");
 
 	// How can I make Jacobian operations automatic?
 	var D_Spherical = manifold.approximateJacobian(f, 0.0001);
-	var transformedTangentSpace = manifold.warpTangentSpaceWithJacobian(tangentSpace2D, space_b, D_Spherical, f, controlPoint2D);
-
-	var double_spherical = function(input) {
-		return spherical(spherical2D(input));
-	};
-
-	var g = manifold.mathFunction(double_spherical, "g");
-	var D_double_spherical = manifold.approximateJacobian(g, 0.0001);
-
-	var transformedTangentSpace2 = manifold.warpTangentSpaceWithJacobian(transformedTangentSpace, space_a, D_double_spherical, g, controlPoint2D);
 	var jacobianMatrixDisplay = manifold.showJacobian(D_Spherical, controlPoint2D, 2);
+	var transformedTangentSpace = manifold.warpTangentSpaceWithJacobian(tangentSpace2D, space_B, D_Spherical, f, controlPoint2D);
+	var g = manifold.mathFunction(squiggle, "g");
+	var controlPointImage = manifold.imageOfControlPoint(controlPoint2D, f, space_B);
 
-	var sneakyGridLines = manifold.nearbyGridLines(space_c, controlPoint2D, 2);
-	var warpyGridLines = manifold.image(f, sneakyGridLines, space_b, true, board_3, board_2);
-	var warpyGridLines2 = manifold.image(g, sneakyGridLines, space_a, true, board_3, board);
+	var D_spherical2 = manifold.approximateJacobian(g, 0.0001);
+	var transformedTangentSpace2 = manifold.warpTangentSpaceWithJacobian(transformedTangentSpace, space_C, D_spherical2, g, controlPointImage);
+
+	var sneakyGridLines = manifold.nearbyGridLines(space_A, controlPoint2D, 2);
+	var warpyGridLines = manifold.image(f, sneakyGridLines, space_B, true, board_A, board_B);
+	var warpyGridLines2 = manifold.image(g, warpyGridLines, space_C, true, board_B, board_C);
+
+	//var jacobianMatrixDisplay = manifold.showJacobian(D_Spherical, controlPoint2D, 2);
 
 	manifold.render();
 };

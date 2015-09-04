@@ -25,9 +25,12 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		linewidth: 2
 	});
 
-	var linematerial = new THREE.LineBasicMaterial({
+	var linematerial = new THREE.LineDashedMaterial({
 		color: 0xffffff,
-		linewidth: 1
+		dashSize: 0.2,
+		gapSize: 0.2,
+		linewidth: 1,
+		scale: 1
 	});
 
 	var parallelogramLineMaterial = new THREE.LineBasicMaterial({
@@ -122,10 +125,10 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		var scene = new THREE.Scene();
 		var camera;
 		if (dimensions == 3) {
-			camera = new THREE.PerspectiveCamera( 30, width / height, 0.1, 1000 );
-			camera.position.setX(30);
-			camera.position.setY(20);
-			camera.position.setZ(40);
+			camera = new THREE.PerspectiveCamera( 75, width / height, 0.1, 1000 );
+			camera.position.setX(10);
+			camera.position.setY(10);
+			camera.position.setZ(10);
 		} else {
 			camera = new THREE.OrthographicCamera( -10, 10, 10 * height * innerHeight / width / innerWidth, -10 * height * innerHeight / width / innerWidth, 1, 10 );
 			camera.position.setZ(2);
@@ -186,36 +189,50 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		return space(2, board, origin, spaceOption, name);
 	};
 
+	function getJacobianNameFromName (name) {
+		return "d" + name;
+	}
+
 	// Returns an approximate Jacobian of function userFunc
 	// so if userfunc takes an n-vector and returns a m-vector,
 	// this takes an n-vector and returns an m by n matrix
 	manifold.approximateJacobian = function(userFunc, epsilon) {
 		// assuming 3x3 for now.
-		var name = "d" + userFunc.name;
+		var name = getJacobianNameFromName(userFunc.name);
 		$("<div/>")
 			.addClass("symbol")
 			.html(name)
 			.appendTo($("#description"));
 		$("#description")[0].innerHTML += ": Jacobian of function " + userFunc.name + "<br>"
-		return function(input) {
-			col1 = userFunc.transform(new THREE.Vector3(epsilon, 0, 0).add(input)).sub(userFunc.transform(input)).divideScalar(epsilon);
-			col2 = userFunc.transform(new THREE.Vector3(0, epsilon, 0).add(input)).sub(userFunc.transform(input)).divideScalar(epsilon);
-			col3 = userFunc.transform(new THREE.Vector3(0,0, epsilon).add(input)).sub(userFunc.transform(input)).divideScalar(epsilon);
-			return new THREE.Matrix3().set(col1.x, col2.x, col3.x,
-				                           col1.y, col2.y, col3.y,
-				                           col1.z, col2.z, col3.z);
+		return {
+			getMatrixAt: function(input) {
+				col1 = userFunc.transform(new THREE.Vector3(epsilon, 0, 0).add(input)).sub(userFunc.transform(input)).divideScalar(epsilon);
+				col2 = userFunc.transform(new THREE.Vector3(0, epsilon, 0).add(input)).sub(userFunc.transform(input)).divideScalar(epsilon);
+				col3 = userFunc.transform(new THREE.Vector3(0,0, epsilon).add(input)).sub(userFunc.transform(input)).divideScalar(epsilon);
+				return new THREE.Matrix3().set(col1.x, col2.x, col3.x,
+					                           col1.y, col2.y, col3.y,
+					                           col1.z, col2.z, col3.z);
+			},
+			name: name
 		};
 	};
 
 	// TODO: Make this work transitively.
 	manifold.warpTangentSpaceWithJacobian = function(originalSpace, targetParentSpace, jacobian, f, controlPoint) {
 		var newSpace = originalSpace.clone();
-		newSpace.name = "T<sub>"+f.name + "(" + controlPoint.name +")" + "</sub>" + targetParentSpace.name;
+		var jacobianMatrixName = jacobian.name + "<sub>" + controlPoint.name + "</sub>"
+		newSpace.name = jacobianMatrixName + "(" + originalSpace.name + ")";
 		$("<div/>")
 			.addClass("symbol")
 			.html(newSpace.name)
 			.appendTo($("#description"));
-		$("#description")[0].innerHTML += ": tangent space at image of point " + controlPoint.name + " under " + f.name + "<br>";
+		$("#description")[0].innerHTML += ": Tangent space at image of point " + controlPoint.name + " under " + f.name;
+		$("#description")[0].innerHTML += "<br>";
+		// sys.addEdge(f.name, newSpace.name);
+		//sys.addEdge(controlPoint.name, newSpace.name);
+		sys.addEdge(originalSpace.name, newSpace.name, {name: jacobianMatrixName});
+		//sys.addEdge(targetParentSpace.name, newSpace.name);
+
 		// CAREFUL: Setting properties like rotation and position will no longer affect the space.
 		newSpace.matrixAutoUpdate = false;
 
@@ -226,12 +243,21 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				// copy over local transformation
 				//
 				// TODO: I'm pretty sure that to do this transitively this needs to be a matrix multiplication.
-				var m = jacobian(controlPoint.position);
+				var m = jacobian.getMatrixAt(controlPoint.position);
+				var original_matrix = new THREE.Matrix4().copy(originalSpace.matrix);
+				var apply_jacobian_matrix = new THREE.Matrix4().identity();
 				for (var i = 0; i < 3; i++) {
+					for (var j = 0; j < 3; j++) {
+						apply_jacobian_matrix.elements[4 * i + j] = m.elements[3 * i + j];
+					}
+				}
+				newSpace.matrix.multiplyMatrices(apply_jacobian_matrix, originalSpace.matrix); // Is this before or after?
+
+				/*for (var i = 0; i < 3; i++) {
 					for (var j = 0; j < 3; j++) {
 						newSpace.matrix.elements[4 * i + j] = m.elements[3 * i + j];
 					}
-				}
+				}*/
 				newSpace.matrix.setPosition(f.transform(controlPoint.position));
 
 				//newSpace.rotation.setFromRotationMatrix()
@@ -256,7 +282,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		}
 		updateRules.push({
 			update:function(){
-				var m = jacobian(controlPoint.position);
+				var m = jacobian.getMatrixAt(controlPoint.position);
 				for (var i = 0; i < basis.children.length; i++) {
 					for (var j = 0; j < newBasis.children[i].geometry.vertices.length; j++) {
 						newBasis.children[i].geometry.vertices[j].copy(basis.children[i].geometry.vertices[j]);
@@ -273,27 +299,40 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	manifold.showJacobian = function(jacobian, controlPoint, source_dimensions, dest_dimensions) {
 		source_dimensions = source_dimensions || 3;
 		dest_dimensions = dest_dimensions || 3;
+		$("<div/>")
+			.addClass("symbol")
+			.html(jacobian.name + "<sub>" + controlPoint.name + "</sub>")
+			.appendTo($("#description"));
+		var explanation = $("<div/>")
+			.addClass("symbol_explanation")
+			.html(": Jacobian of some function evaluated at " + controlPoint.name)
+			.appendTo($("#description"));
+		$("#description").append("<br>");
+		//$(".symbol_explanation")[0].innerHTML += ": jacobian of some function evaluated at " + controlPoint.name + "<br>";
 		var matrixBox = $("<div/>")
-			.html("jacobian matrix appears here")
-			.attr("id", "jacobian_matrix")
-			.prependTo($("#extra_content"));
-
-		matrixBox.html("jacobian matrix:<br>");
+			.addClass("jacobian_matrix")
+			.appendTo(explanation);
 		var brackets = $("<div/>")
-			.attr("id", "matrix_brackets")
+			.addClass("matrix_brackets")
 			.appendTo(matrixBox);
+		var column_ids = [];
+		for (var i = 0; i < source_dimensions; i++) {
+			var id = jacobian.name + "_at_" + controlPoint.name + "_col_" + i;
+			column_ids.push(id);
+			var column = $("<div/>")
+				.addClass("matrix_column")
+				.attr("id", id)
+				.appendTo(brackets);
+		}
 		updateRules.push({
 			update: function() {
-				brackets.html("");
-				var M = jacobian(controlPoint.position).toArray();
+				var M = jacobian.getMatrixAt(controlPoint.position).toArray();
 				for (var i = 0; i < source_dimensions; i++) {
-					var column = $("<div/>")
-						.attr("id", "matrix_column")
-						.appendTo(brackets);
+					var column_contents = "";
 					for (var j = 0; j < dest_dimensions; j++) {
-						column.append(M[i * 3 + j].toFixed(2));
-						column.append("<br>");
+						column_contents += M[i * 3 + j].toFixed(2) + "<br>";
 					}
+					$("#" + column_ids[i]).html(column_contents);
 				}
 			}
 		});
@@ -333,6 +372,8 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			.html("--"+userFunc.name+"-->")
 			.appendTo($("body"));
 
+		sys.addEdge(object.parent.name, space.name, {name: userFunc.name});
+
 		updateRules.push({
 			update:function(){
 				for (var i = 0; i < object.geometry.vertices.length; i++) {
@@ -360,7 +401,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			.addClass("symbol")
 			.html(name)
 			.appendTo($("#description"));
-		$("#description")[0].innerHTML += ": some function<br>";
+		$("#description")[0].innerHTML += ": Function<br>";
 		return {
 			transform: f,
 			name: name
@@ -381,23 +422,38 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		return basisCopy;
 	};
 
+	var kHideControlPoint = false;
+	var kUseSmallControlPoint = true;
 	manifold.controlPoint = function(board, space, dimensions, name) {
 		$("<div/>")
 			.addClass("symbol")
 			.html(name)
 			.attr("id", "point_"+name)
 			.appendTo($("#description"));
-		$("#description")[0].innerHTML += ": point in " + space.name + "<br>";
+		$("#description")[0].innerHTML += ": Point in " + space.name + "<br>";
 		dimensions = dimensions || 3;
 		console.log(dimensions);
-		var cursorSurface = new THREE.SphereGeometry(2.5, 100, 100);
-		var controlPointMaterial = new THREE.MeshBasicMaterial({
-			color:0xffffff,
-			transparent:true,
-			opacity:0.3,
-			blending: THREE.AdditiveBlending,
-			depthWrite:false
-		});
+		var cursorSurface, controlPointMaterial;
+
+		if (kUseSmallControlPoint) {
+			cursorSurface = new THREE.SphereGeometry(0.1, 100, 100);
+
+			controlPointMaterial = new THREE.MeshBasicMaterial({
+				color:0xffffff,
+				blending: THREE.AdditiveBlending,
+				depthWrite:false
+			});
+		} else {
+			cursorSurface = new THREE.SphereGeometry(2.5, 100, 100);
+
+			controlPointMaterial = new THREE.MeshBasicMaterial({
+				color:0xffffff,
+				transparent:true,
+				opacity:0.3,
+				blending: THREE.AdditiveBlending,
+				depthWrite:false
+			});
+		}
 		var funMesh = new THREE.Mesh(cursorSurface, controlPointMaterial);
 		space.add(funMesh);
 		if (dimensions == 3) {
@@ -499,8 +555,10 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 					}
 				} else {
 					$("#point_" + name).css("color", "");
-					funMesh.material.color.set(0xff0000);
-					funMesh.material.opacity = 0;
+					if (kHideControlPoint) {
+						funMesh.material.color.set(0xff0000);
+						funMesh.material.opacity = 0;
+					}
 				}
 			}
 
@@ -515,16 +573,38 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		return funMesh;
 	};
 
+	manifold.imageOfControlPoint = function(controlPoint, func, space) {
+		var cursorSurface = new THREE.SphereGeometry(0.1, 100, 100);
+		var inertControlPointMaterial = new THREE.MeshBasicMaterial({
+			color:0xffffff,
+			blending: THREE.AdditiveBlending,
+			depthWrite:false
+		});
+		//var funMesh = new THREE.Mesh(cursorSurface, controlPointMaterial);
+		var newControlPoint = new THREE.Mesh(cursorSurface, inertControlPointMaterial);
+		space.add(newControlPoint);
+		newControlPoint.name = func.name + "(" + controlPoint.name + ")";
+		updateRules.push({
+			update:function(){
+				newControlPoint.position.copy(func.transform(controlPoint.position));
+			}
+		});
+		return newControlPoint;
+	};
+
 	// controlPoint should be an Object3D with a position where
 	// we want to center the gridlines.
 	manifold.nearbyGridLines = function(space, controlPoint, dimensions) {
 		dimensions = dimensions || 3;
 		var gridLines = new THREE.Geometry();
-		var m = 1;
-		var gridSize = 2;
+		var m = 5;
+		var gridSize = 0.5;
 		var cuts = 10;
 		var step = 1 / cuts;
 		k_m = (dimensions == 2) ? 0 : m;
+
+		var bright_radius = gridSize * (m + 0.5);
+
 		for (var i = -m; i <= m; i++) {
 			for (var j = -m; j <= m; j++) {
 				for (var k = -k_m; k <= k_m; k++) {
@@ -552,7 +632,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 		updateRules.push({
 			update: function() {
-				var f = 2 * m + 1;
+				var f = gridSize * (2 * m + 1);
 				// Move each line segment to the position nearest to the controlPoint
 				// with the constraint that the line segment is only allowed to
 				// occupy a lattice of locations
@@ -560,17 +640,19 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 
 					var motion = new THREE.Vector3(0,0,0).copy(controlPoint.position).sub(gridMesh.geometry.vertices[i]);
-					var multiplying_factor = 0.5 + 0.5 * Math.sin(-3 * motion.length() + 0.002 * new Date().getTime());
-					var t = Math.max(0, 1 - 0.6 * motion.length());
-					t = Math.min(1, t) * multiplying_factor;
+					//var multiplying_factor = 0.5 + 0.5 * Math.sin(-3 * motion.length() + 0.002 * new Date().getTime());
+					var t = Math.max(0, 1 - motion.length() / bright_radius);
+					t = Math.min(1, t);
+					//t *= multiplying_factor;
 					var color = new THREE.Color( 0xffffff );
 					color.setRGB(t,t,t);
 					gridMesh.geometry.colors[i] = color;
 
 
 					var motion_2 = new THREE.Vector3(0,0,0).copy(controlPoint.position).sub(gridMesh.geometry.vertices[i+1]);
-					var t_2 = Math.max(0, 1 - 0.6 * motion_2.length());
-					t_2 = Math.min(1, t_2) * multiplying_factor;
+					var t_2 = Math.max(0, 1 - motion_2.length() / bright_radius );
+					t_2 = Math.min(1, t_2);
+					//t_2 *= multiplying_factor;
 					var color_2 = new THREE.Color( 0xffffff );
 					color_2.setRGB(t_2,t_2,t_2);
 					gridMesh.geometry.colors[i+1] = color_2;
@@ -763,6 +845,9 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		// controlPoint should be an object with a Vector3 position member.
 		var space = new THREE.Object3D();
 		space.name = "T<sub>" + controlPoint.name + "</sub>" + parent.name;
+		sys.addEdge(controlPoint.name, space.name);
+		sys.addEdge(controlPoint.name, parent.name);
+		sys.addEdge(parent.name, space.name);
 		$("<div/>")
 			.addClass("symbol")
 			.html(space.name)
@@ -815,6 +900,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			.html(name)
 			.appendTo($("#description"));
 		$("#description")[0].innerHTML += ": " + dimension + "-dimensional space<br>";
+		sys.addNode(name, {mass:.25})
 
 		// Moves selected object if there is one, and does highlighting
 		document.addEventListener('mousemove', function (event) {
@@ -832,15 +918,16 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		var line = undefined;
 		if (spaceOption == "axes") {
 			axes.vertices.push(
-				new THREE.Vector3( -10, 0, 0 ),
-				new THREE.Vector3( 10, 0, 0 ),
-				new THREE.Vector3( 0, -10, 0 ),
-				new THREE.Vector3( 0, 10, 0 ));
+				new THREE.Vector3( -100, 0, 0 ),
+				new THREE.Vector3( 100, 0, 0 ),
+				new THREE.Vector3( 0, -100, 0 ),
+				new THREE.Vector3( 0, 100, 0 ));
 			if (dimension == 3) {
 				axes.vertices.push(
-					new THREE.Vector3( 0, 0, -10 ),
-					new THREE.Vector3( 0, 0, 10 ));
+					new THREE.Vector3( 0, 0, -100 ),
+					new THREE.Vector3( 0, 0, 100 ));
 			}
+			axes.computeLineDistances();
 			line = new THREE.Line( axes, linematerial, THREE.LinePieces);
 		} else if (spaceOption == "box"){
 			if (dimension == 2) {
@@ -901,7 +988,16 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 					new THREE.Vector3( 10, 10, -10 ),
 					new THREE.Vector3( 10, 10, 10 ));
 			}
+			axes.computeLineDistances();
 			line = new THREE.Line( axes, linematerial, THREE.LinePieces);
+		} else if (spaceOption == "volume_axes") {
+			for (var i = 0; i < dimension; i++) {
+				var geometry = new THREE.CylinderGeometry( 1, 1, 20, 32 );
+				var material = new THREE.MeshBasicMaterial( {color: 0xffff00} );
+				var cylinder = new THREE.Mesh( geometry, material );
+				cylinder.up.set(new THREE.Vector3(i == 0, i == 1, i == 2));
+				plot.add( cylinder );
+			}
 		}
 
 		board.scene.add( plot );
@@ -978,13 +1074,160 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 	function createCursorSurface() {
 		var cursorSurface = new THREE.SphereGeometry(6,100,100);
-		var min = new THREE.Vector3(-1.5,-1.5,-1.5);
-		var max = new THREE.Vector3(1.5,1.5,1.5);
+		//var min = new THREE.Vector3(-1.5,-1.5,-1.5);
+		//var max = new THREE.Vector3(1.5,1.5,1.5);
 		for (var i = 0; i < cursorSurface.vertices.length; i++) {
-			cursorSurface.vertices[i] = cursorSurface.vertices[i].clamp(min,max);
+			cursorSurface.vertices[i] = cursorSurface.vertices[i].clampScalar(-1.5,1.5);
 		}
 		return cursorSurface;
 	}
 
 
 }(window.manifold = window.manifold || {}, jQuery, THREE));
+
+
+
+function HTMLishToLaTeXish(input) {
+	return input.replace(/<sub>/g, "_{").replace(/<\/sub>/g, "}");
+}
+
+// graph visualization with arbor.js
+var sys;
+(function($){
+
+  var Renderer = function(canvas){
+    var canvas = $(canvas).get(0)
+    var ctx = canvas.getContext("2d");
+    var particleSystem
+
+    var that = {
+      init:function(system){
+        //
+        // the particle system will call the init function once, right before the
+        // first frame is to be drawn. it's a good place to set up the canvas and
+        // to pass the canvas size to the particle system
+        //
+        // save a reference to the particle system for use in the .redraw() loop
+        particleSystem = system
+
+        // inform the system of the screen dimensions so it can map coords for us.
+        // if the canvas is ever resized, screenSize should be called again with
+        // the new dimensions
+        particleSystem.screenSize(canvas.width, canvas.height)
+        particleSystem.screenPadding(80) // leave an extra 80px of whitespace per side
+
+        // set up some event handlers to allow for node-dragging
+        that.initMouseHandling()
+      },
+
+      redraw:function(){
+        //
+        // redraw will be called repeatedly during the run whenever the node positions
+        // change. the new positions for the nodes can be accessed by looking at the
+        // .p attribute of a given node. however the p.x & p.y values are in the coordinates
+        // of the particle system rather than the screen. you can either map them to
+        // the screen yourself, or use the convenience iterators .eachNode (and .eachEdge)
+        // which allow you to step through the actual node objects but also pass an
+        // x,y point in the screen's coordinate system
+        //
+        ctx.fillStyle = "white"
+        ctx.fillRect(0,0, canvas.width, canvas.height)
+
+        particleSystem.eachEdge(function(edge, pt1, pt2){
+          // edge: {source:Node, target:Node, length:#, data:{}}
+          // pt1:  {x:#, y:#}  source position in screen coords
+          // pt2:  {x:#, y:#}  target position in screen coords
+
+          // draw a line from pt1 to pt2
+          ctx.strokeStyle = "rgba(0,0,0, .333)"
+          ctx.lineWidth = 1
+          ctx.beginPath()
+          ctx.moveTo(pt1.x, pt1.y)
+          ctx.lineTo(pt2.x, pt2.y)
+          ctx.stroke()
+
+          if (edge.data.name) {
+            ctx.font="10px Georgia";
+            ctx.fillStyle = "black";
+		    ctx.fillText(HTMLishToLaTeXish(edge.data.name),(pt1.x + pt2.x)/2, (pt1.y + pt2.y)/2);
+		  }
+        })
+
+        particleSystem.eachNode(function(node, pt){
+          // node: {mass:#, p:{x,y}, name:"", data:{}}
+          // pt:   {x:#, y:#}  node position in screen coords
+
+          // draw a rectangle centered at pt
+          var w = 2
+          ctx.fillStyle = (node.data.alone) ? "orange" : "black"
+          ctx.fillRect(pt.x-w/2, pt.y-w/2, w,w)
+
+          ctx.font="10px";
+		  ctx.fillText(HTMLishToLaTeXish(node.name),pt.x + 10,pt.y + 10);
+        })
+      },
+
+      initMouseHandling:function(){
+        // no-nonsense drag and drop (thanks springy.js)
+
+
+        var dragged = null;
+
+        // set up a handler object that will initially listen for mousedowns then
+        // for moves and mouseups while dragging
+        var handler = {
+          clicked:function(e){
+            var pos = $(canvas).offset();
+            _mouseP = arbor.Point(e.pageX-pos.left, e.pageY-pos.top)
+            dragged = particleSystem.nearest(_mouseP);
+
+            if (dragged && dragged.node !== null){
+              // while we're dragging, don't let physics move the node
+              dragged.node.fixed = true
+            }
+
+            $(canvas).bind('mousemove', handler.dragged)
+            $(window).bind('mouseup', handler.dropped)
+
+            return false
+          },
+          dragged:function(e){
+            var pos = $(canvas).offset();
+            var s = arbor.Point(e.pageX-pos.left, e.pageY-pos.top)
+
+            if (dragged && dragged.node !== null){
+              var p = particleSystem.fromScreen(s)
+              dragged.node.p = p
+            }
+
+            return false
+          },
+
+          dropped:function(e){
+            if (dragged===null || dragged.node===undefined) return
+            if (dragged.node !== null) dragged.node.fixed = false
+            dragged.node.tempMass = 1000
+            dragged = null
+            $(canvas).unbind('mousemove', handler.dragged)
+            $(window).unbind('mouseup', handler.dropped)
+            _mouseP = null
+            return false
+          }
+        }
+
+        // start listening
+        $(canvas).mousedown(handler.clicked);
+
+      },
+
+    }
+    return that
+  }
+
+  $(document).ready(function(){
+    sys = arbor.ParticleSystem(1000, 600, 0.5) // create the system with sensible repulsion/stiffness/friction
+    sys.parameters({gravity:true}) // use center-gravity to make the graph settle nicely (ymmv)
+    sys.renderer = Renderer("#viewport") // our newly created renderer will have its .init() method called shortly by sys...
+  })
+
+})(this.jQuery)
