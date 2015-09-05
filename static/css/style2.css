@@ -77,6 +77,11 @@ body {
 	position:absolute;
 }
 
+#viewport{
+	left:0px;
+	top:15%;
+}
+
 .matrix_brackets {
 	display: inline-block;
 	border-right: 1px solid;

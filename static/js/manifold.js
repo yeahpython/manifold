@@ -136,8 +136,7 @@ console.log(this);
 		c_2.attr("fill", "white");
 
 		var l = snap.line(50,50,100,100);
-		l.attr("stroke", "white")
-		console.log(c_1);
+		l.attr("stroke", "white");
 		updateRules.push({
 			update:function(){
 				var vector_1 = getScreenPositionFromBoard(object_1.position, board_1, true);
@@ -200,7 +199,9 @@ console.log(this);
 		// enabled Orbit controls when a different panel is clicked.
 		// although Orbit controls might be diabled again if a control point is clicked.
 		document.addEventListener('mousedown', function (event) {
+			console.log("mouse down!");
 			var mouse_pos = getRelativeMousePositionInBoard(event.pageX, event.pageY, board);
+			console.log(mouse_pos.y);
 			board.controls.enabled = (Math.abs(mouse_pos.x) < 1 && Math.abs(mouse_pos.y) < 1);
 		}, false);
 
@@ -495,7 +496,8 @@ console.log(this);
 
 	var kHideControlPoint = false;
 	var kUseSmallControlPoint = true;
-	manifold.controlPoint = function(board, space, dimensions, name) {
+	var kUseBigClickSurface = false;
+	manifold.controlPoint = function(board, space, dimensions, name, initialPosition) {
 		$("<div/>")
 			.addClass("symbol")
 			.html(name)
@@ -503,7 +505,6 @@ console.log(this);
 			.appendTo($("#description"));
 		$("#description")[0].innerHTML += ": Point in " + space.name + "<br>";
 		dimensions = dimensions || 3;
-		console.log(dimensions);
 		var cursorSurface, controlPointMaterial;
 
 		if (kUseSmallControlPoint) {
@@ -527,7 +528,12 @@ console.log(this);
 		}
 		var funMesh = new THREE.Mesh(cursorSurface, controlPointMaterial);
 
-		var clickSurface = new THREE.SphereGeometry(2.5, 100, 100);
+		var clickSurface;
+		if (kUseBigClickSurface){
+			clickSurface = new THREE.SphereGeometry(2.5, 100, 100);
+		} else {
+			clickSurface = new THREE.SphereGeometry(0.1, 100, 100);
+		}
 
 		var clickMaterial = new THREE.MeshBasicMaterial({
 			color:0xffffff,
@@ -543,10 +549,14 @@ console.log(this);
 		clickMesh.position.set(0,0,0);
 
 		space.add(funMesh);
-		if (dimensions == 3) {
-			funMesh.position.set(Math.random(), Math.random(), Math.random());
-		} else if (dimensions == 2) {
-			funMesh.position.set(Math.random(), Math.random(), 0);
+		if (initialPosition) {
+			funMesh.position.copy(initialPosition);
+		} else {
+			if (dimensions == 3) {
+				funMesh.position.set(Math.random(), Math.random(), Math.random());
+			} else if (dimensions == 2) {
+				funMesh.position.set(Math.random(), Math.random(), 0);
+			}
 		}
 		manifold.controlPoints.push(funMesh);
 
@@ -689,8 +699,8 @@ console.log(this);
 	manifold.nearbyGridLines = function(space, controlPoint, dimensions) {
 		dimensions = dimensions || 3;
 		var gridLines = new THREE.Geometry();
-		var m = 5;
-		var gridSize = 0.3;
+		var m = 3;
+		var gridSize = 0.5;
 		var cuts = 10;
 		var step = 1 / cuts;
 		k_m = (dimensions == 2) ? 0 : m;
@@ -1174,13 +1184,25 @@ console.log(this);
 		return cursorSurface;
 	}
 
+	manifold.controlledLinearTransformation = function(x_column, y_column, z_column, name) {
+		var matrix = new THREE.Matrix3();
+		updateRules.push({
+			update:function(){
+			matrix.set(x_column.position.x, y_column.position.x, z_column.position.x,
+				       x_column.position.y, y_column.position.y, z_column.position.y,
+				       x_column.position.z, y_column.position.z, z_column.position.z);
+		}});
+		return {
+			name: name,
+			transform: function(input) {
+				var vectorArray = input.toArray();
+				matrix.applyToVector3Array(vectorArray);
+				return new THREE.Vector3().fromArray(vectorArray);
+			}
+		};
+	};
 
 }(window.manifold = window.manifold || {}, jQuery, THREE));
-
-manifold.controlledLinearTransformation = function(x_column, y_column, z_column) {
-	var matrix = new THREE.Matrix3();
-
-}
 
 function HTMLishToLaTeXish(input) {
 	return input.replace(/<sub>/g, "_{").replace(/<\/sub>/g, "}");
@@ -1217,7 +1239,9 @@ var sys;
       },
 
       redraw:function(){
-      	return;
+      	if (!($(canvas).hasClass("active"))) {
+      		return;
+      	}
         //
         // redraw will be called repeatedly during the run whenever the node positions
         // change. the new positions for the nodes can be accessed by looking at the
@@ -1227,6 +1251,8 @@ var sys;
         // which allow you to step through the actual node objects but also pass an
         // x,y point in the screen's coordinate system
         //
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight * 0.85;
         ctx.fillStyle = "white";
         ctx.fillRect(0,0, canvas.width, canvas.height);
 
