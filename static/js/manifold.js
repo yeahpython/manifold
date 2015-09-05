@@ -199,9 +199,7 @@ console.log(this);
 		// enabled Orbit controls when a different panel is clicked.
 		// although Orbit controls might be diabled again if a control point is clicked.
 		document.addEventListener('mousedown', function (event) {
-			console.log("mouse down!");
 			var mouse_pos = getRelativeMousePositionInBoard(event.pageX, event.pageY, board);
-			console.log(mouse_pos.y);
 			board.controls.enabled = (Math.abs(mouse_pos.x) < 1 && Math.abs(mouse_pos.y) < 1);
 		}, false);
 
