@@ -104,8 +104,7 @@ var foo = function() {
 			$('#info_panel').toggle('slow');
 		});
 
-	$("#viewport")
-		.toggle(false);
+	$("#viewport").toggle(false);
 
 	$("#toggle_graph_button")
 		.click(function(){
@@ -173,19 +172,21 @@ var foo = function() {
 	var warpyGridLines2 = manifold.image(g, warpyGridLines, space_C, true, board_B, board_C);
 
 
-	var funControlPoint = manifold.controlPoint(board_B, space_B, 3, "y");
+	var funControlPoint = manifold.controlPoint(board_B, space_B, 3, "y", new THREE.Vector3(0, 0, 0));
 
 	var x_column = manifold.controlPoint(board_C, space_C, 3, "p", new THREE.Vector3(1, 0, 0));
 	var y_column = manifold.controlPoint(board_C, space_C, 3, "q", new THREE.Vector3(0, 1, 0));
 	var z_column = manifold.controlPoint(board_C, space_C, 3, "r", new THREE.Vector3(0, 0, 1));
 
-	//var funBasis = manifold.addUnitBasis(3, space_B);
+	var funBasis = manifold.addUnitBasis(3, space_B);
 
 	var transformation = manifold.controlledLinearTransformation(x_column, y_column, z_column);
 
 	var gridLines = manifold.nearbyGridLines(space_B, funControlPoint, 3);
 	var stretchedGridLines = manifold.image(transformation, gridLines, space_C, true, board_B, board_C);
 
+	var D_transformation = manifold.approximateJacobian(transformation, 0.0001);
+	var transformedTangentSpace = manifold.warpTangentSpaceWithJacobian(funBasis, space_C, D_transformation, transformation, funControlPoint);
 	//var funBasis2 = manifold.image(transformation, funBasis, space_C, false, board_B, board_C);
 
 	//var funControlPoint2 = manifold.imageOfControlPoint(funControlPoint, transformation, space_C);
