@@ -150,16 +150,15 @@ console.log(this);
 
 				if (point_1_ok) {
 					c_1.animate({cx : vector_1.x, cy:vector_1.y}, duration);
+					l.animate({x1 : vector_1.x, y1:vector_1.y}, duration);
 				} else {
 					// console.log("not updating connection to " + object_1.name + " because z value is " + vector_1.z);
 				}
 				if (point_2_ok) {
 					c_2.animate({cx : vector_2.x, cy:vector_2.y}, duration);
+					l.animate({x2 : vector_2.x, y2:vector_2.y}, duration);
 				} else {
 					// console.log("not updating connection to " + object_2.name+ " because z value is " + vector_2.z);
-				}
-				if (point_1_ok && point_2_ok) {
-					l.animate({x1 : vector_1.x, y1:vector_1.y, x2 : vector_2.x, y2:vector_2.y}, duration);
 				}
 			}
 		});
@@ -724,20 +723,20 @@ console.log(this);
 
 	// controlPoint should be an Object3D with a position where
 	// we want to center the gridlines.
-	manifold.nearbyGridLines = function(space, controlPoint, dimensions) {
+	manifold.nearbyGridLines = function(space, controlPoint, dimensions, gridSize, r) {
 		dimensions = dimensions || 3;
 		var gridLines = new THREE.Geometry();
-		var m = 3;
-		var gridSize = 0.5;
+		r = r || 3;
+		gridSize = gridSize || 1.0;
 		var cuts = 10;
 		var step = 1 / cuts;
-		k_m = (dimensions == 2) ? 0 : m;
+		k_m = (dimensions == 2) ? 1 : r;
 
-		var bright_radius = gridSize * (m + 0.5);
+		var bright_radius = gridSize * r / 2;
 
-		for (var i = -m; i <= m; i++) {
-			for (var j = -m; j <= m; j++) {
-				for (var k = -k_m; k <= k_m; k++) {
+		for (var i = 0; i < r; i++) {
+			for (var j = 0; j < r; j++) {
+				for (var k = 0; k < k_m; k++) {
 					for (var s = 0; s < cuts; s++) {
 						gridLines.vertices.push(
 							new THREE.Vector3(i+s*step, j, k).multiplyScalar(gridSize),
@@ -762,7 +761,7 @@ console.log(this);
 
 		updateRules.push({
 			update: function() {
-				var f = gridSize * (2 * m + 1);
+				var f = gridSize * r;
 				// Move each line segment to the position nearest to the controlPoint
 				// with the constraint that the line segment is only allowed to
 				// occupy a lattice of locations
@@ -815,7 +814,7 @@ console.log(this);
 			.appendTo($("#description"));
 		$("#description")[0].innerHTML += ": " + dimensions + "-dimensional basis in " + space.name + "<br>"
 
-		var basisLength = 1.5;
+		var basisLength = 1.0;
 
 		var basis = new THREE.Object3D();
 		space.add(basis);
@@ -1213,6 +1212,7 @@ console.log(this);
 	}
 
 	manifold.controlledLinearTransformation = function(x_column, y_column, z_column, name) {
+		name = name || "anonymous"
 		var matrix = new THREE.Matrix3();
 		updateRules.push({
 			update:function(){
@@ -1220,14 +1220,11 @@ console.log(this);
 				       x_column.position.y, y_column.position.y, z_column.position.y,
 				       x_column.position.z, y_column.position.z, z_column.position.z);
 		}});
-		return {
-			name: name,
-			transform: function(input) {
+		return manifold.mathFunction (function(input) {
 				var vectorArray = input.toArray();
 				matrix.applyToVector3Array(vectorArray);
 				return new THREE.Vector3().fromArray(vectorArray);
-			}
-		};
+			}, name);
 	};
 
 }(window.manifold = window.manifold || {}, jQuery, THREE));

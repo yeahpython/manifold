@@ -167,7 +167,7 @@ var foo = function() {
 	var D_spherical2 = manifold.approximateJacobian(g, 0.0001);
 	var transformedTangentSpace2 = manifold.warpTangentSpaceWithJacobian(transformedTangentSpace, space_C, D_spherical2, g, controlPointImage);
 
-	var sneakyGridLines = manifold.nearbyGridLines(space_A, controlPoint2D, 2);
+	var sneakyGridLines = manifold.nearbyGridLines(space_A, controlPoint2D, 2, 0.3, 7);
 	var warpyGridLines = manifold.image(f, sneakyGridLines, space_B, true, board_A, board_B);
 	var warpyGridLines2 = manifold.image(g, warpyGridLines, space_C, true, board_B, board_C);
 
@@ -180,9 +180,9 @@ var foo = function() {
 
 	var funBasis = manifold.addUnitBasis(3, space_B);
 
-	var transformation = manifold.controlledLinearTransformation(x_column, y_column, z_column);
+	var transformation = manifold.controlledLinearTransformation(x_column, y_column, z_column, "M");
 
-	var gridLines = manifold.nearbyGridLines(space_B, funControlPoint, 3);
+	var gridLines = manifold.nearbyGridLines(space_B, funControlPoint, 3, 1.0, 3);
 	var stretchedGridLines = manifold.image(transformation, gridLines, space_C, true, board_B, board_C);
 
 	var D_transformation = manifold.approximateJacobian(transformation, 0.0001);
