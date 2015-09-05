@@ -96,9 +96,9 @@ var foo = function() {
 	renderer.setClearColor(0x000000, 1.0);
 
 	//var board = manifold.board("board", window.innerWidth / 2, window.innerHeight - 10);
-	var board_A = manifold.board("boards", window.innerWidth, window.innerHeight, 0, 0, 0.6, 1, renderer, 2);
-	var board_B = manifold.board("boards", window.innerWidth, window.innerHeight, 0.6, 0.5, 0.4, 0.5, renderer);
-	var board_C = manifold.board("boards", window.innerWidth, window.innerHeight, 0.6, 0, 0.4, 0.5, renderer);
+	var board_A = manifold.board("boards", window.innerWidth, window.innerHeight / 2, 0.0, 0.0, 0.333, 1, renderer, 2);
+	var board_B = manifold.board("boards", window.innerWidth, window.innerHeight / 2, 0.333, 0.0, 0.334, 1, renderer);
+	var board_C = manifold.board("boards", window.innerWidth, window.innerHeight / 2, 0.666, 0.0, 0.334, 1, renderer);
 
 	var space_A = manifold.space2(board_A, new THREE.Vector3(0,0,0), "axes", "A");
 	var space_B = manifold.space3(board_B, new THREE.Vector3(0,0,0), "axes", "B");
@@ -130,6 +130,9 @@ var foo = function() {
 	var transformedTangentSpace = manifold.warpTangentSpaceWithJacobian(tangentSpace2D, space_B, D_Spherical, f, controlPoint2D);
 	var g = manifold.mathFunction(squiggle, "g");
 	var controlPointImage = manifold.imageOfControlPoint(controlPoint2D, f, space_B);
+
+
+	var connection = manifold.metaConnection(controlPoint2D, board_A, controlPointImage, board_B);
 
 	var D_spherical2 = manifold.approximateJacobian(g, 0.0001);
 	var transformedTangentSpace2 = manifold.warpTangentSpaceWithJacobian(transformedTangentSpace, space_C, D_spherical2, g, controlPointImage);

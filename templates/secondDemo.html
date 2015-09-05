@@ -5,8 +5,10 @@
 
       <!--loads a litte faster, I think-->
       <!--script src="/static/js/external/three.min.js"></script-->
-
+      <link rel="stylesheet" type="text/css" href="/static/css/external/jquery.svg.css">
+      <script type="text/javascript" src="/static/js/external/jquery.svg.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r71/three.min.js"></script>
+      <script src="/static/js/external/snap.svg.js"></script>
       <script src="/static/js/manifold.js"></script>
       <script src="/static/js/secondDemo.js"></script>
       <script src="/static/js/external/OrbitControls.js"></script>
@@ -16,18 +18,34 @@
       <link rel="stylesheet" type="text/css" href="/static/css/style2.css">
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   </head>
-  <body onload="foo()", style="margin:0">
-  	<div style = "font-family:Verdana; background-color:rgba(0,0,0,0.5); font-size:10pt; max-width: 600px; color:white; position:absolute; top:10px; left:10px">
-    <button onclick="playPauseHander()"><span id="option">Pause</span> animation</button>
-		<!--button onclick="toggleLeapControl()" id="control-button">Control with Leap Motion</button-->
+  <body onload="foo()">
+    <svg version="1.1"
+         xmlns="http://www.w3.org/2000/svg"
+         width="100%" height="100%" id = "svg_annotation"></svg>
+    <!--svg version="1.1"
+         xmlns="http://www.w3.org/2000/svg"
+         width="400" height="300">
+      <style>
+        circle {
+          fill-opacity: 0.5;
+          stroke-width: 4;
+          fill: #3080d0;
+          stroke: #3080d0;
+        }
+      </style>
+      <circle id="my-circle" cx="100" cy="100" r="50" />
+    </svg-->
+    <div onclick="playPauseHander()" id="playPauseButton"><span id="option">Pause</span> animation</div>
+    <!--button onclick="toggleLeapControl()" id="control-button">Control with Leap Motion</button-->
+  	<div id = "info_panel">
   		<span id="control"></span>
-    	<div id = "debug", style="color:red"></div>
-      <div id = "debug2", style="color:green"></div>
+    	<div id = "debug"></div>
+      <div id = "debug2"></div>
       <div id = "extra_content">
-        <div id = "description">
-        </div>
+        <div id = "description"></div>
       </div>
-  	</div><div id = "boards" style = "display:inline-block"></div>
-    <canvas id="viewport" style="display:block; position:absolute; left:0px; top:50%" width="300" height="300"></canvas>
+  	</div>
+    <div id = "boards" style = "display:inline-block"></div>
+    <canvas id="viewport" width="600" height="300"></canvas>
   </body>
 </html>

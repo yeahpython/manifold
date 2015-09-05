@@ -7,6 +7,9 @@ Explain multivariable calculus in the browser!
 The latest version of this project may be found at github.com/yeahpython/manifold
 */
 
+console.log(window);
+console.log(this);
+
 (function(manifold, $, THREE, undefined){
 
 	// Materials
@@ -96,6 +99,51 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		}
 	}];
 
+	var snap;
+	$(document).ready(function(){
+		snap = Snap("#svg_annotation");
+	});
+
+	function getScreenPositionFromBoard(vec, board) {
+		var vector = new THREE.Vector3().copy(vec).project(board.camera);
+		vector.x = (vector.x + 1) / 2;
+        vector.y = -(vector.y - 1) / 2;
+        // vector.x and vector.y are now relative locations in the view.
+        vector.x *= board.view.width;
+        vector.x += board.view.left;
+
+        vector.y *= board.view.height;
+        vector.y -= board.view.bottom;
+
+
+        vector.x *= board.renderer.domElement.width;
+        vector.y *= board.renderer.domElement.height;
+		return vector;
+	}
+
+	// Draws a line from the position of object_1 to the position of object_2.
+	// object_1 and object_2 don't need to be in the same three-dimensional scene.
+	manifold.metaConnection = function(object_1, board_1, object_2, board_2) {
+		var c_1 = snap.circle(100,100,3);
+		c_1.attr("fill", "white");
+
+		var c_2 = snap.circle(100,100,3);
+		c_2.attr("fill", "white");
+
+		var l = snap.line(50,50,100,100);
+		l.attr("stroke", "white")
+		console.log(c_1);
+		updateRules.push({
+			update:function(){
+				var vector_1 = getScreenPositionFromBoard(object_1.position, board_1);
+				var vector_2 = getScreenPositionFromBoard(object_2.position, board_2);
+				c_1.animate({cx : vector_1.x, cy:vector_1.y}, 50);
+				c_2.animate({cx : vector_2.x, cy:vector_2.y}, 50);
+				l.animate({x1 : vector_1.x, y1:vector_1.y, x2 : vector_2.x, y2:vector_2.y}, 50);
+			}
+		});
+	}
+
 
 	// Public Methods
 	/*
@@ -130,8 +178,8 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			camera.position.setY(10);
 			camera.position.setZ(10);
 		} else {
-			camera = new THREE.OrthographicCamera( -10, 10, 10 * height * innerHeight / width / innerWidth, -10 * height * innerHeight / width / innerWidth, 1, 10 );
-			camera.position.setZ(2);
+			camera = new THREE.OrthographicCamera( -10, 10, 10 * height * innerHeight / width / innerWidth, -10 * height * innerHeight / width / innerWidth, 1, 100 );
+			camera.position.setZ(20);
 		}
 
 		// Prepare Orbit controls
@@ -162,7 +210,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		// slower, with rounded line caps
 		//var renderer = new THREE.CanvasRenderer({alpha:true, antialias:true});
 
-		renderer.setSize( width, height );
+		renderer.setSize( width, height, true);
 		var box = document.getElementById(id);
 		box.appendChild( renderer.domElement );
 		var board = {
@@ -357,20 +405,37 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		space.add(mesh);
 		mesh.geometry.dynamic = true;
 
+		$("<div/>")
+			.addClass("symbol")
+			.html(userFunc.name)
+			.appendTo($("#description"));
+		$("#description")[0].innerHTML += ": " + object.parent.name + " ->" + space.name + "<br>";
+
 		var left = Math.max(oldBoard.view.left, newBoard.view.left);
-		var width = Math.min(oldBoard.view.left + oldBoard.view.width, newBoard.view.right + newBoard.view.width) - left;
+		var width = Math.min(oldBoard.view.left + oldBoard.view.width, newBoard.view.left + newBoard.view.width) - left;
 		var bottom = Math.max(oldBoard.view.bottom, newBoard.view.bottom);
 		var height = Math.min(oldBoard.view.bottom + oldBoard.view.height, newBoard.view.bottom + newBoard.view.height) - bottom;
-
-		$("<div/>")
+		var box = $("<div/>")
 			.css({
 				position: "absolute",
-				left: oldBoard.renderer.domElement.width * left + "px",
-				bottom: oldBoard.renderer.domElement.height * (bottom + (height / 2)) + "px",
+				"font-size" : "50px",
+				"text-align":"center",
+				display:"table",
+				//border:"solid 1px red",
+				left: oldBoard.renderer.domElement.width * (left + width / 2) - 50 + "px",
+				top: oldBoard.renderer.domElement.height * (1 - (bottom + height / 2)) - 50  + "px",
+				width: "100px",
+				height: "100px",
 				"color":"white",
 			})
-			.html("--"+userFunc.name+"-->")
 			.appendTo($("body"));
+		$("<div/>")
+			.css({
+				"display": "table-cell",
+				"vertical-align": "middle",
+			})
+			.html(userFunc.name)
+			.appendTo(box);
 
 		sys.addEdge(object.parent.name, space.name, {name: userFunc.name});
 
@@ -428,7 +493,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		$("<div/>")
 			.addClass("symbol")
 			.html(name)
-			.attr("id", "point_"+name)
+			.attr("id", "point_" + name)
 			.appendTo($("#description"));
 		$("#description")[0].innerHTML += ": Point in " + space.name + "<br>";
 		dimensions = dimensions || 3;
@@ -440,7 +505,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 			controlPointMaterial = new THREE.MeshBasicMaterial({
 				color:0xffffff,
-				blending: THREE.AdditiveBlending,
+				//blending: THREE.AdditiveBlending,
 				depthWrite:false
 			});
 		} else {
@@ -455,6 +520,22 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			});
 		}
 		var funMesh = new THREE.Mesh(cursorSurface, controlPointMaterial);
+
+		var clickSurface = new THREE.SphereGeometry(2.5, 100, 100);
+
+		var clickMaterial = new THREE.MeshBasicMaterial({
+			color:0xffffff,
+			transparent:true,
+			opacity:0,
+			//blending: THREE.AdditiveBlending,
+			depthWrite:false
+		});
+
+		var clickMesh = new THREE.Mesh(clickSurface, clickMaterial);
+
+		funMesh.add(clickMesh);
+		clickMesh.position.set(0,0,0);
+
 		space.add(funMesh);
 		if (dimensions == 3) {
 			funMesh.position.set(2, 2, 2);
@@ -482,10 +563,10 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			mouse.y = mouse_pos.y;
 			if (Math.abs(mouse_pos.x) < 1 && Math.abs(mouse_pos.y) < 1 && manifold.animating) {
 				space.updateMatrixWorld();
-				var intersects = raycaster.intersectObject( funMesh);
+				var intersects = raycaster.intersectObject( clickMesh);
 				if (intersects.length > 0) {
 					board.controls.enabled = false;
-					selection = intersects[0].object;
+					selection = funMesh;
 					selection.material.color.set(0x00ff00);
 					$("#point_" + name).css("color", "green");
 					var plane_intersects = raycaster.intersectObject(plane);
@@ -512,7 +593,9 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			var mouse_pos = getRelativeMousePositionInBoard(event, board);
 
 			// Get 3D vector from 3D mouse position using 'unproject' function
+
 			var vector = new THREE.Vector3(mouse_pos.x, mouse_pos.y, 1);
+			vector.clampScalar(-1, 1);
 			vector.unproject(board.camera);
 
 			// Set the raycaster position
@@ -523,6 +606,9 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			}
 			if (selection) {
 				// Check the position where the plane is intersected
+				//
+				// TODO: contrain mouse position to board and redo raycast.
+				//
 				var intersects = raycaster.intersectObject(plane);
 				// Reposition the object based on the intersection point with the plane
 				// selection.position.copy(intersects[0].point.sub(offset));
@@ -531,9 +617,9 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				// funMesh.material.color.set(0xff0000);
 				// funMesh.material.opacity = 0;
 				// Update position of the plane if need
-				var object_intersects = raycaster.intersectObject(funMesh);
+				var object_intersects = raycaster.intersectObject(clickMesh);
 				if (object_intersects.length > 0) {
-					if (object_intersects[0].object !== funMesh) {
+					if (object_intersects[0].object !== clickMesh) {
 						throw "Unexpected collision";
 					}
 					funMesh.material.color.set(0xffff00);
@@ -598,7 +684,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		dimensions = dimensions || 3;
 		var gridLines = new THREE.Geometry();
 		var m = 5;
-		var gridSize = 0.5;
+		var gridSize = 0.3;
 		var cuts = 10;
 		var step = 1 / cuts;
 		k_m = (dimensions == 2) ? 0 : m;
@@ -683,7 +769,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		$("<div/>")
 			.addClass("symbol")
 			.appendTo($("#description"));
-		$("#description")[0].innerHTML += dimensions + "-dimensional basis in " + space.name + "<br>"
+		$("#description")[0].innerHTML += ": " + dimensions + "-dimensional basis in " + space.name + "<br>"
 
 		var basisLength = 1.5;
 
@@ -845,9 +931,9 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		// controlPoint should be an object with a Vector3 position member.
 		var space = new THREE.Object3D();
 		space.name = "T<sub>" + controlPoint.name + "</sub>" + parent.name;
-		sys.addEdge(controlPoint.name, space.name);
-		sys.addEdge(controlPoint.name, parent.name);
-		sys.addEdge(parent.name, space.name);
+		//sys.addEdge(controlPoint.name, space.name);
+		//sys.addEdge(controlPoint.name, parent.name);
+		//sys.addEdge(parent.name, space.name);
 		$("<div/>")
 			.addClass("symbol")
 			.html(space.name)
@@ -1013,7 +1099,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	}
 
 
-	// Updates the meshes in the scene according to UpdateRules.
+	// Updates the meshes in the scene according to updateRules.
 	// Does not sort according to dependencies. This should be okay
 	// because updateRules should be added in topological order for
 	// now.
@@ -1091,6 +1177,7 @@ function HTMLishToLaTeXish(input) {
 	return input.replace(/<sub>/g, "_{").replace(/<\/sub>/g, "}");
 }
 
+
 // graph visualization with arbor.js
 var sys;
 (function($){
@@ -1130,8 +1217,8 @@ var sys;
         // which allow you to step through the actual node objects but also pass an
         // x,y point in the screen's coordinate system
         //
-        ctx.fillStyle = "white"
-        ctx.fillRect(0,0, canvas.width, canvas.height)
+        ctx.fillStyle = "white";
+        ctx.fillRect(0,0, canvas.width, canvas.height);
 
         particleSystem.eachEdge(function(edge, pt1, pt2){
           // edge: {source:Node, target:Node, length:#, data:{}}
@@ -1139,21 +1226,25 @@ var sys;
           // pt2:  {x:#, y:#}  target position in screen coords
 
           // draw a line from pt1 to pt2
-          ctx.strokeStyle = "rgba(0,0,0, .333)"
-          ctx.lineWidth = 1
-          ctx.beginPath()
-          ctx.moveTo(pt1.x, pt1.y)
-          ctx.lineTo(pt2.x, pt2.y)
-          ctx.stroke()
+          ctx.strokeStyle = "rgba(0, 0, 0, .333)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          var scale = 5 / Math.pow(Math.pow(pt2.x - pt1.x, 2) + Math.pow(pt2.y - pt1.y, 2), 0.5);
+          ctx.moveTo(pt1.x, pt1.y);
+          ctx.lineTo(pt2.x, pt2.y);
+          ctx.lineTo(pt2.x + scale * (pt1.x - pt2.x + pt2.y - pt1.y), pt2.y + scale * ( pt1.y - pt2.y - pt2.x + pt1.x) );
+          ctx.moveTo(pt2.x, pt2.y);
+          ctx.lineTo(pt2.x + scale * (pt1.x - pt2.x - pt2.y + pt1.y), pt2.y + scale * ( pt1.y - pt2.y + pt2.x - pt1.x) );
+          ctx.stroke();
 
           if (edge.data.name) {
             ctx.font="10px Georgia";
             ctx.fillStyle = "black";
 		    ctx.fillText(HTMLishToLaTeXish(edge.data.name),(pt1.x + pt2.x)/2, (pt1.y + pt2.y)/2);
 		  }
-        })
+        });
 
-        particleSystem.eachNode(function(node, pt){
+        particleSystem.eachNode(function(node, pt) {
           // node: {mass:#, p:{x,y}, name:"", data:{}}
           // pt:   {x:#, y:#}  node position in screen coords
 
