@@ -1,6 +1,6 @@
 body {
 	margin:0;
-	background-color:white;
+	background-color:black;
 }
 
 #debug {
@@ -19,9 +19,9 @@ body {
 }
 
 #info_panel {
-	background-color: white;
+	background-color: rgba(0,0,0,1.0);
 	font-size: 10pt;
-	color: black;
+	color: white;
 	position: absolute;
 	text-align:center;
 	top: 15%;
@@ -36,13 +36,13 @@ body {
 
 #extra_content {
 	font-family: Georgia;
-	color: black;
+	color: white;
 }
 
 #jacobian_matrix {
 	padding: 5px;
 	display: inline-block;
-	background-color: white;
+	background-color: black;
 }
 
 #button_array{
@@ -55,22 +55,22 @@ body {
 }
 
 .fancy_button{
-	border: solid 1px black;
+	border: solid 1px white;
 	display:inline-block;
 	padding: 5px;
-	color:black;
+	color:#ffffff;
 	text-align:center;
 	width: 150px;
 	border-radius: 15px;
 }
 
 .fancy_button:hover{
-	background-color:#eeeeee;
-	cursor: pointer;
+	background-color:white;
+	color:black;
 }
 
 .fancy_button:active{
-	color:black;
+	color:#ffffff;
 }
 
 #svg_annotation{

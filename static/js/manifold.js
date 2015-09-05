@@ -104,16 +104,21 @@ console.log(this);
 		snap = Snap("#svg_annotation");
 	});
 
-	function getScreenPositionFromBoard(vec, board) {
+	function getScreenPositionFromBoard(vec, board, constrain) {
+		if (constrain)
 		var vector = new THREE.Vector3().copy(vec).project(board.camera);
 		vector.x = (vector.x + 1) / 2;
         vector.y = -(vector.y - 1) / 2;
+        if (constrain) {
+        	vector.clampScalar(0, 1);
+        }
+
         // vector.x and vector.y are now relative locations in the view.
         vector.x *= board.view.width;
         vector.x += board.view.left;
 
         vector.y *= board.view.height;
-        vector.y -= board.view.bottom;
+        vector.y += board.view.bottom;
 
 
         vector.x *= board.renderer.domElement.width;
@@ -135,11 +140,11 @@ console.log(this);
 		console.log(c_1);
 		updateRules.push({
 			update:function(){
-				var vector_1 = getScreenPositionFromBoard(object_1.position, board_1);
-				var vector_2 = getScreenPositionFromBoard(object_2.position, board_2);
-				c_1.animate({cx : vector_1.x, cy:vector_1.y}, 50);
-				c_2.animate({cx : vector_2.x, cy:vector_2.y}, 50);
-				l.animate({x1 : vector_1.x, y1:vector_1.y, x2 : vector_2.x, y2:vector_2.y}, 50);
+				var vector_1 = getScreenPositionFromBoard(object_1.position, board_1, true);
+				var vector_2 = getScreenPositionFromBoard(object_2.position, board_2, true);
+				c_1.animate({cx : vector_1.x, cy:vector_1.y}, 0);
+				c_2.animate({cx : vector_2.x, cy:vector_2.y}, 0);
+				l.animate({x1 : vector_1.x, y1:vector_1.y, x2 : vector_2.x, y2:vector_2.y}, 0);
 			}
 		});
 	}
@@ -178,7 +183,7 @@ console.log(this);
 			camera.position.setY(10);
 			camera.position.setZ(10);
 		} else {
-			camera = new THREE.OrthographicCamera( -10, 10, 10 * height * innerHeight / width / innerWidth, -10 * height * innerHeight / width / innerWidth, 1, 100 );
+			camera = new THREE.OrthographicCamera( -5, 5, 5 * height * innerHeight / width / innerWidth, -5 * height * innerHeight / width / innerWidth, 1, 100 );
 			camera.position.setZ(20);
 		}
 
@@ -195,7 +200,7 @@ console.log(this);
 		// enabled Orbit controls when a different panel is clicked.
 		// although Orbit controls might be diabled again if a control point is clicked.
 		document.addEventListener('mousedown', function (event) {
-			var mouse_pos = getRelativeMousePositionInBoard(event, board);
+			var mouse_pos = getRelativeMousePositionInBoard(event.pageX, event.pageY, board);
 			board.controls.enabled = (Math.abs(mouse_pos.x) < 1 && Math.abs(mouse_pos.y) < 1);
 		}, false);
 
@@ -411,7 +416,8 @@ console.log(this);
 			.appendTo($("#description"));
 		$("#description")[0].innerHTML += ": " + object.parent.name + " ->" + space.name + "<br>";
 
-		var left = Math.max(oldBoard.view.left, newBoard.view.left);
+		// code for adding bigass function labels between the rendered scenes.
+		/*var left = Math.max(oldBoard.view.left, newBoard.view.left);
 		var width = Math.min(oldBoard.view.left + oldBoard.view.width, newBoard.view.left + newBoard.view.width) - left;
 		var bottom = Math.max(oldBoard.view.bottom, newBoard.view.bottom);
 		var height = Math.min(oldBoard.view.bottom + oldBoard.view.height, newBoard.view.bottom + newBoard.view.height) - bottom;
@@ -435,7 +441,7 @@ console.log(this);
 				"vertical-align": "middle",
 			})
 			.html(userFunc.name)
-			.appendTo(box);
+			.appendTo(box);*/
 
 		sys.addEdge(object.parent.name, space.name, {name: userFunc.name});
 
@@ -538,9 +544,9 @@ console.log(this);
 
 		space.add(funMesh);
 		if (dimensions == 3) {
-			funMesh.position.set(2, 2, 2);
+			funMesh.position.set(Math.random(), Math.random(), Math.random());
 		} else if (dimensions == 2) {
-			funMesh.position.set(2, 2, 0);
+			funMesh.position.set(Math.random(), Math.random(), 0);
 		}
 		manifold.controlPoints.push(funMesh);
 
@@ -558,7 +564,7 @@ console.log(this);
 
 		// Allows you to select objects and possibly drag them around
 		document.addEventListener('mousedown', function (event) {
-			var mouse_pos = getRelativeMousePositionInBoard(event, board);
+			var mouse_pos = getRelativeMousePositionInBoard(event.pageX, event.pageY, board);
 			mouse.x = mouse_pos.x;
 			mouse.y = mouse_pos.y;
 			if (Math.abs(mouse_pos.x) < 1 && Math.abs(mouse_pos.y) < 1 && manifold.animating) {
@@ -590,7 +596,7 @@ console.log(this);
 			// code adapted from this tutorial for dragging and dropping objects:
 			// https://www.script-tutorials.com/webgl-with-three-js-lesson-10/
 			event.preventDefault();
-			var mouse_pos = getRelativeMousePositionInBoard(event, board);
+			var mouse_pos = getRelativeMousePositionInBoard(event.pageX, event.pageY, board);
 
 			// Get 3D vector from 3D mouse position using 'unproject' function
 
@@ -993,7 +999,7 @@ console.log(this);
 			// code adapted from this tutorial for dragging and dropping objects:
 			// https://www.script-tutorials.com/webgl-with-three-js-lesson-10/
 			event.preventDefault();
-			var mouse_pos = getRelativeMousePositionInBoard(event, board);
+			var mouse_pos = getRelativeMousePositionInBoard(event.pageX, event.pageY,  board);
 			var over = (Math.abs(mouse_pos.x) < 1 && Math.abs(mouse_pos.y) < 1);
 			$("#space_" + name).css("color", over ? "#eeee00": "");
 		}, false);
@@ -1122,11 +1128,11 @@ console.log(this);
 		}
 	}
 
-	function getRelativeMousePositionInBoard(event, board) {
+	function getRelativeMousePositionInBoard(pageX, pageY, board) {
 		var board_position = $("#" + board.id).offset();
 
-		var inputX = event.pageX - board_position.left;
-		var inputY = event.pageY - board_position.top;
+		var inputX = pageX - board_position.left;
+		var inputY = pageY - board_position.top;
 
 		// That is the position in the canvas. To get the position in the subwindow:
 		var left = Math.floor(board.renderer.domElement.width * board.view.left);
@@ -1171,7 +1177,10 @@ console.log(this);
 
 }(window.manifold = window.manifold || {}, jQuery, THREE));
 
+manifold.controlledLinearTransformation = function(x_column, y_column, z_column) {
+	var matrix = new THREE.Matrix3();
 
+}
 
 function HTMLishToLaTeXish(input) {
 	return input.replace(/<sub>/g, "_{").replace(/<\/sub>/g, "}");
@@ -1208,6 +1217,7 @@ var sys;
       },
 
       redraw:function(){
+      	return;
         //
         // redraw will be called repeatedly during the run whenever the node positions
         // change. the new positions for the nodes can be accessed by looking at the

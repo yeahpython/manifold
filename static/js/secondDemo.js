@@ -45,7 +45,7 @@ var identity = function(vector) {
 
 var playPauseHander = function(){
 	manifold.animating = !manifold.animating;
-	document.getElementById("option").innerHTML = manifold.animating ? "Pause" : "Play";
+	document.getElementById("option").innerHTML = manifold.animating ? "Pause Rendering" : "Resume Interactivity";
 };
 
 var toggleLeapControl = function(){
@@ -92,13 +92,14 @@ function getRandomColor() {
 }
 
 var foo = function() {
+	$("#info_panel").toggle(false);
 	var renderer = new THREE.WebGLRenderer({alpha:true, antialias:true});
 	renderer.setClearColor(0x000000, 1.0);
 
 	//var board = manifold.board("board", window.innerWidth / 2, window.innerHeight - 10);
-	var board_A = manifold.board("boards", window.innerWidth, window.innerHeight / 2, 0.0, 0.0, 0.333, 1, renderer, 2);
-	var board_B = manifold.board("boards", window.innerWidth, window.innerHeight / 2, 0.333, 0.0, 0.334, 1, renderer);
-	var board_C = manifold.board("boards", window.innerWidth, window.innerHeight / 2, 0.666, 0.0, 0.334, 1, renderer);
+	var board_A = manifold.board("boards", window.innerWidth, window.innerHeight, 0.000, 0.15, 0.333, 0.7, renderer, 2);
+	var board_B = manifold.board("boards", window.innerWidth, window.innerHeight, 0.333, 0.15, 0.333, 0.7, renderer);
+	var board_C = manifold.board("boards", window.innerWidth, window.innerHeight, 0.666, 0.15, 0.334, 0.7, renderer);
 
 	var space_A = manifold.space2(board_A, new THREE.Vector3(0,0,0), "axes", "A");
 	var space_B = manifold.space3(board_B, new THREE.Vector3(0,0,0), "axes", "B");
@@ -130,9 +131,11 @@ var foo = function() {
 	var transformedTangentSpace = manifold.warpTangentSpaceWithJacobian(tangentSpace2D, space_B, D_Spherical, f, controlPoint2D);
 	var g = manifold.mathFunction(squiggle, "g");
 	var controlPointImage = manifold.imageOfControlPoint(controlPoint2D, f, space_B);
+	var controlPointImage2 = manifold.imageOfControlPoint(controlPointImage, g, space_C);
 
 
 	var connection = manifold.metaConnection(controlPoint2D, board_A, controlPointImage, board_B);
+	var connection = manifold.metaConnection(controlPointImage, board_B, controlPointImage2, board_C);
 
 	var D_spherical2 = manifold.approximateJacobian(g, 0.0001);
 	var transformedTangentSpace2 = manifold.warpTangentSpaceWithJacobian(transformedTangentSpace, space_C, D_spherical2, g, controlPointImage);
@@ -140,6 +143,13 @@ var foo = function() {
 	var sneakyGridLines = manifold.nearbyGridLines(space_A, controlPoint2D, 2);
 	var warpyGridLines = manifold.image(f, sneakyGridLines, space_B, true, board_A, board_B);
 	var warpyGridLines2 = manifold.image(g, warpyGridLines, space_C, true, board_B, board_C);
+
+
+	var x_column = manifold.controlPoint(board_C, space_C, 3, "p");
+	var y_column = manifold.controlPoint(board_C, space_C, 3, "q");
+	var z_column = manifold.controlPoint(board_C, space_C, 3, "r");
+
+	var transformation = manifold.controlledLinearTransformation(x_column, y_column, z_column);
 
 	//var jacobianMatrixDisplay = manifold.showJacobian(D_Spherical, controlPoint2D, 2);
 

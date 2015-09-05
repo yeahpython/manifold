@@ -35,7 +35,10 @@
       </style>
       <circle id="my-circle" cx="100" cy="100" r="50" />
     </svg-->
-    <div onclick="playPauseHander()" id="playPauseButton"><span id="option">Pause</span> animation</div>
+    <div id = "button_array">
+      <div onclick="playPauseHander()" class="fancy_button"><span id="option">Pause Rendering</span></div>
+      <div onclick="$('#info_panel').toggle('slow')" class="fancy_button">Toggle Info Panel</div>
+    </div>
     <!--button onclick="toggleLeapControl()" id="control-button">Control with Leap Motion</button-->
   	<div id = "info_panel">
   		<span id="control"></span>
