@@ -105,12 +105,14 @@ console.log(this);
 	});
 
 	function getScreenPositionFromBoard(vec, board, constrain) {
-		if (constrain)
 		var vector = new THREE.Vector3().copy(vec).project(board.camera);
 		vector.x = (vector.x + 1) / 2;
         vector.y = -(vector.y - 1) / 2;
-        if (constrain) {
+        if (constrain === true) {
         	vector.clampScalar(0, 1);
+        } else if (constrain === "2D") {
+        	// This is supposed to not clamp the z values.
+        	vector.clamp(new THREE.Vector3(0, 0, -1000), new THREE.Vector3(1, 1, 1000));
         }
 
         // vector.x and vector.y are now relative locations in the view.
@@ -137,13 +139,28 @@ console.log(this);
 
 		var l = snap.line(50,50,100,100);
 		l.attr("stroke", "white");
+		var duration = 0;
 		updateRules.push({
 			update:function(){
-				var vector_1 = getScreenPositionFromBoard(object_1.position, board_1, true);
-				var vector_2 = getScreenPositionFromBoard(object_2.position, board_2, true);
-				c_1.animate({cx : vector_1.x, cy:vector_1.y}, 0);
-				c_2.animate({cx : vector_2.x, cy:vector_2.y}, 0);
-				l.animate({x1 : vector_1.x, y1:vector_1.y, x2 : vector_2.x, y2:vector_2.y}, 0);
+				var vector_1 = getScreenPositionFromBoard(object_1.position, board_1, "2D");
+				var vector_2 = getScreenPositionFromBoard(object_2.position, board_2, "2D");
+				// ignore if not in view.
+				var point_1_ok = ((vector_1.z >= 0) && (vector_1.z <= 1)) || (board_1.dimensions == 2);
+				var point_2_ok = ((vector_2.z >= 0) && (vector_2.z <= 1)) || (board_2.dimensions == 2);
+
+				if (point_1_ok) {
+					c_1.animate({cx : vector_1.x, cy:vector_1.y}, duration);
+				} else {
+					// console.log("not updating connection to " + object_1.name + " because z value is " + vector_1.z);
+				}
+				if (point_2_ok) {
+					c_2.animate({cx : vector_2.x, cy:vector_2.y}, duration);
+				} else {
+					// console.log("not updating connection to " + object_2.name+ " because z value is " + vector_2.z);
+				}
+				if (point_1_ok && point_2_ok) {
+					l.animate({x1 : vector_1.x, y1:vector_1.y, x2 : vector_2.x, y2:vector_2.y}, duration);
+				}
 			}
 		});
 	}
@@ -214,7 +231,19 @@ console.log(this);
 		// slower, with rounded line caps
 		//var renderer = new THREE.CanvasRenderer({alpha:true, antialias:true});
 
-		renderer.setSize( width, height, true);
+		renderer.setSize(width, height, true);
+
+		var callback = function() {
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			if (dimensions == 2) {
+				camera.top = 5 * window.innerHeight * innerHeight / window.innerWidth / innerWidth;
+				camera.bottom = -5 * window.innerHeight * innerHeight / window.innerWidth / innerWidth;
+			}
+		}
+
+		window.addEventListener('resize', callback, false);
+
+
 		var box = document.getElementById(id);
 		box.appendChild( renderer.domElement );
 		var board = {
@@ -223,7 +252,8 @@ console.log(this);
 			camera: camera,
 			renderer: renderer,
 			controls: controls,
-			view: view
+			view: view,
+			dimensions: dimensions
 		};
 		boards.push(board);
 		return board;
@@ -1251,6 +1281,7 @@ var sys;
         //
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight * 0.85;
+        particleSystem.screenSize(canvas.width, canvas.height)
         ctx.fillStyle = "white";
         ctx.fillRect(0,0, canvas.width, canvas.height);
 

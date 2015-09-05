@@ -52,10 +52,6 @@ var toggleInfoPanel = function() {
 	$('#info_panel').toggle('slow');
 }
 
-var toggleGraph = function() {
-	$('#viewport').toggle('slow').toggleClass('active');
-}
-
 var toggleLeapControl = function(){
 	if (manifold.cursorControl == "leap") {
 		manifold.cursorControl = "mouse";
@@ -101,7 +97,30 @@ function getRandomColor() {
 
 var foo = function() {
 	$("#info_panel").toggle(false);
-	$("#viewport").toggle(false);
+
+	$("#toggle_info_panel_button")
+		.click(function(){
+			manifold.animating = !manifold.animating;
+			$('#info_panel').toggle('slow');
+		});
+
+	$("#viewport")
+		.toggle(false);
+
+	$("#toggle_graph_button")
+		.click(function(){
+			manifold.animating = !manifold.animating;
+			$('#viewport').toggle('slow');
+			$('#viewport').toggleClass('active');
+		});
+
+	$(".fancy_button")
+		.click(function(){
+			$(this).toggleClass("selected");
+		});
+
+
+
 	var renderer = new THREE.WebGLRenderer({alpha:true, antialias:true});
 	renderer.setClearColor(0x000000, 1.0);
 

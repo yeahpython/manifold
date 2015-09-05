@@ -70,18 +70,22 @@ body {
 }
 
 .fancy_button:active{
-	color:black;
+	color: black;
 }
 
 #svg_annotation{
-	position:absolute;
+	position: absolute;
 }
 
 #viewport{
-	left:0px;
-	top:15%;
+	left: 0px;
+	top: 15%;
 }
 
+.selected {
+	background-color:black;
+	color:white;
+}
 .matrix_brackets {
 	display: inline-block;
 	border-right: 1px solid;
