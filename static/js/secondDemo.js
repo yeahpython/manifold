@@ -23,6 +23,13 @@ var squiggle = function(vector) {
 	return new THREE.Vector3(x + Math.sin(y * squiggle_scale), y + Math.cos(z * squiggle_scale), z * Math.cos(x * squiggle_scale));
 };
 
+var squiggle_scale_2 = 1;
+var squiggle_2 = function(vector) {
+	x = vector.x;
+	y = vector.y;
+	return new THREE.Vector3(x + 0.5 * Math.sin(y * squiggle_scale_2), y + 0.5 * Math.cos(x * squiggle_scale_2), 0);
+};
+
 /*
 This function takes planes aligned with the xy plane to toruses.
  */
@@ -33,9 +40,9 @@ var donut = function(vector) {
 	var scaling = 5;
 	var inner_radius = scaling + scaling * exp / (1+exp);
 	var radius = scaling * 2;
-	var t = Math.sin(0.2 * vector.y) * (radius + (radius - inner_radius) * Math.cos(vector.x));
-	var u = (radius - inner_radius) * Math.sin(vector.x);
-	var v = Math.cos(0.2 * vector.y) * (radius + (radius - inner_radius) * Math.cos(vector.x));
+	var t = Math.sin(0.6 * vector.x) * (radius + (radius - inner_radius) * Math.cos(vector.y));
+	var u = (radius - inner_radius) * Math.sin(vector.y);
+	var v = Math.cos(0.6 * vector.x) * (radius + (radius - inner_radius) * Math.cos(vector.y));
 	return new THREE.Vector3(t, u, v);
 };
 
@@ -124,9 +131,9 @@ var foo = function() {
 	renderer.setClearColor(0x000000, 1.0);
 
 	//var board = manifold.board("board", window.innerWidth / 2, window.innerHeight - 10);
-	var board_A = manifold.board("boards", window.innerWidth, window.innerHeight, 0.000, 0.15, 0.333, 0.7, renderer, 2);
-	var board_B = manifold.board("boards", window.innerWidth, window.innerHeight, 0.333, 0.15, 0.333, 0.7, renderer);
-	var board_C = manifold.board("boards", window.innerWidth, window.innerHeight, 0.666, 0.15, 0.334, 0.7, renderer);
+	var board_A = manifold.board("boards", window.innerWidth, window.innerHeight, 0.000, 0.15, 0.330, 0.7, renderer, 2);
+	var board_B = manifold.board("boards", window.innerWidth, window.innerHeight, 0.335, 0.15, 0.330, 0.7, renderer, 2);
+	var board_C = manifold.board("boards", window.innerWidth, window.innerHeight, 0.670, 0.15, 0.330, 0.7, renderer);
 
 	var space_A = manifold.space2(board_A, new THREE.Vector3(0,0,0), "axes", "A");
 	var space_B = manifold.space3(board_B, new THREE.Vector3(0,0,0), "axes", "B");
@@ -150,13 +157,13 @@ var foo = function() {
 	//var tangentSpace = manifold.createTangentSpace(space_C, controlPoint);
 	//var basicBasis = manifold.addUnitBasis(3, tangentSpace);
 
-	var f = manifold.mathFunction(spherical2D, "f");
+	var f = manifold.mathFunction(squiggle_2, "f");
 
 	// How can I make Jacobian operations automatic?
 	var D_Spherical = manifold.approximateJacobian(f, 0.0001);
 	var jacobianMatrixDisplay = manifold.showJacobian(D_Spherical, controlPoint2D, 2);
 	var transformedTangentSpace = manifold.warpTangentSpaceWithJacobian(tangentSpace2D, space_B, D_Spherical, f, controlPoint2D);
-	var g = manifold.mathFunction(squiggle, "g");
+	var g = manifold.mathFunction(donut, "g");
 	var controlPointImage = manifold.imageOfControlPoint(controlPoint2D, f, space_B);
 	var controlPointImage2 = manifold.imageOfControlPoint(controlPointImage, g, space_C);
 
@@ -167,11 +174,11 @@ var foo = function() {
 	var D_spherical2 = manifold.approximateJacobian(g, 0.0001);
 	var transformedTangentSpace2 = manifold.warpTangentSpaceWithJacobian(transformedTangentSpace, space_C, D_spherical2, g, controlPointImage);
 
-	var sneakyGridLines = manifold.nearbyGridLines(space_A, controlPoint2D, 2, 0.3, 7);
+	var sneakyGridLines = manifold.nearbyGridLines(space_A, controlPoint2D, 2, 0.4, 12);
 	var warpyGridLines = manifold.image(f, sneakyGridLines, space_B, true, board_A, board_B);
 	var warpyGridLines2 = manifold.image(g, warpyGridLines, space_C, true, board_B, board_C);
 
-
+	/*
 	var funControlPoint = manifold.controlPoint(board_B, space_B, 3, "y", new THREE.Vector3(0, 0, 0));
 
 	var x_column = manifold.controlPoint(board_C, space_C, 3, "p", new THREE.Vector3(1, 0, 0));
@@ -187,11 +194,8 @@ var foo = function() {
 
 	var D_transformation = manifold.approximateJacobian(transformation, 0.0001);
 	var transformedTangentSpace = manifold.warpTangentSpaceWithJacobian(funBasis, space_C, D_transformation, transformation, funControlPoint);
-	//var funBasis2 = manifold.image(transformation, funBasis, space_C, false, board_B, board_C);
 
-	//var funControlPoint2 = manifold.imageOfControlPoint(funControlPoint, transformation, space_C);
-
-	//var jacobianMatrixDisplay = manifold.showJacobian(D_Spherical, controlPoint2D, 2);
+	*/
 
 	manifold.render();
 };

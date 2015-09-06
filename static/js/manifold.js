@@ -11,8 +11,6 @@ console.log(window);
 console.log(this);
 
 (function(manifold, $, THREE, undefined){
-
-	// Materials
 	var xAxisMaterial = new THREE.LineBasicMaterial({
 		color: 0xff0000,
 		linewidth: 2
@@ -99,6 +97,7 @@ console.log(this);
 		}
 	}];
 
+	// This is used for svg animations such as the lines that span 3D scenes.
 	var snap;
 	$(document).ready(function(){
 		snap = Snap("#svg_annotation");
@@ -137,8 +136,13 @@ console.log(this);
 		var c_2 = snap.circle(100,100,3);
 		c_2.attr("fill", "white");
 
-		var l = snap.line(50,50,100,100);
-		l.attr("stroke", "white");
+		//var l = snap.line(50,50,100,100);
+		//l.attr("stroke", "white");
+
+		var l_2 = snap.path("M 100 200 C 100 199 200 199 400 200");
+		l_2.attr("stroke", "white");
+		l_2.attr("fill", "transparent");
+
 		var duration = 0;
 		updateRules.push({
 			update:function(){
@@ -148,18 +152,27 @@ console.log(this);
 				var point_1_ok = ((vector_1.z >= 0) && (vector_1.z <= 1)) || (board_1.dimensions == 2);
 				var point_2_ok = ((vector_2.z >= 0) && (vector_2.z <= 1)) || (board_2.dimensions == 2);
 
+				var endpoint_1 = new THREE.Vector3().lerpVectors(vector_1, vector_2, 0);
+				var endpoint_2 = new THREE.Vector3().lerpVectors(vector_2, vector_1, 0);
+
 				if (point_1_ok) {
-					c_1.animate({cx : vector_1.x, cy:vector_1.y}, duration);
-					l.animate({x1 : vector_1.x, y1:vector_1.y}, duration);
+					c_1.animate({cx : endpoint_1.x, cy:endpoint_1.y}, duration);
+					//l.animate({x1 : endpoint_1.x, y1:endpoint_1.y}, duration);
 				} else {
 					// console.log("not updating connection to " + object_1.name + " because z value is " + vector_1.z);
 				}
 				if (point_2_ok) {
-					c_2.animate({cx : vector_2.x, cy:vector_2.y}, duration);
-					l.animate({x2 : vector_2.x, y2:vector_2.y}, duration);
+					c_2.animate({cx : endpoint_2.x, cy:endpoint_2.y}, duration);
+					//l.animate({x2 : endpoint_2.x, y2:endpoint_2.y}, duration);
 				} else {
 					// console.log("not updating connection to " + object_2.name+ " because z value is " + vector_2.z);
 				}
+				var target =  "M " + Math.round(endpoint_1.x) + " " + Math.round(endpoint_1.y) +
+				             " C " + Math.round(endpoint_1.x) + " " + Math.round(endpoint_1.y - 80) +
+				               " " + Math.round(endpoint_2.x) + " " + Math.round(endpoint_2.y - 80) +
+				               " " + Math.round(endpoint_2.x) + " " + Math.round(endpoint_2.y);
+				//console.log(target);
+				l_2.attr("d", target);
 			}
 		});
 	}
@@ -882,7 +895,7 @@ console.log(this);
 		// Not written yet.
 	};
 
-	var colors = [0x220000, 0x002200, 0x000022];
+	var colors = [0x000000, 0x111111, 0x000000];
 
 	manifold.render = function() {
 		// lazy (as a programmer) solution for turning off animations.
