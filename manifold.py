@@ -19,9 +19,13 @@ app.config.from_object(__name__)
 def home():
     return render_template("manifold.html")
 
-@app.route('/secondDemo')
-def second():
-    return render_template("secondDemo.html")
+@app.route('/jacobian')
+def jacobian():
+    return render_template("jacobian.html")
+
+@app.route('/linear_transformation')
+def linear_transformation():
+    return render_template("linear_transformation.html")
 
 
 # run the app

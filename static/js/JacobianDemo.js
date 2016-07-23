@@ -1,3 +1,28 @@
+var playPauseHander = function() {
+	manifold.animating = !manifold.animating;
+	document.getElementById("option").innerHTML = manifold.animating ? "Pause Rendering" : "Resume Interactivity";
+};
+
+var toggleInfoPanel = function() {
+	$('#info_panel').toggle('slow');
+}
+
+var toggleLeapControl = function(){
+	if (manifold.cursorControl == "leap") {
+		manifold.cursorControl = "mouse";
+		document.getElementById("control-button").innerHTML = "Control with Leap Motion";
+		document.getElementById("control").innerHTML = "Mouse";
+	} else {
+		if (!manifold.leapIntialized) {
+			manifold.leapIntialized = true;
+			manifold.tryToControlInputWithLeap();
+		}
+		manifold.cursorControl = "leap";
+		document.getElementById("control-button").innerHTML = "Control with Mouse";
+		document.getElementById("control").innerHTML = "Leap Motion";
+	}
+};
+
 /*
 This function takes planes aligned with the xy plane to spheres.
  */
@@ -25,9 +50,10 @@ var squiggle = function(vector) {
 
 var squiggle_scale_2 = 1;
 var squiggle_2 = function(vector) {
+	z = vector.z;
 	x = vector.x;
 	y = vector.y;
-	return new THREE.Vector3(x + 0.5 * Math.sin(y * squiggle_scale_2), y + 0.5 * Math.cos(x * squiggle_scale_2), 0);
+	return new THREE.Vector3(x + 0.5 * Math.sin(y * squiggle_scale_2), y + 0.5 * Math.cos(x * squiggle_scale_2), z);
 };
 
 /*
@@ -48,31 +74,6 @@ var donut = function(vector) {
 
 var identity = function(vector) {
 	return new THREE.Vector3().copy(vector);
-};
-
-var playPauseHander = function() {
-	manifold.animating = !manifold.animating;
-	document.getElementById("option").innerHTML = manifold.animating ? "Pause Rendering" : "Resume Interactivity";
-};
-
-var toggleInfoPanel = function() {
-	$('#info_panel').toggle('slow');
-}
-
-var toggleLeapControl = function(){
-	if (manifold.cursorControl == "leap") {
-		manifold.cursorControl = "mouse";
-		document.getElementById("control-button").innerHTML = "Control with Leap Motion";
-		document.getElementById("control").innerHTML = "Mouse";
-	} else {
-		if (!manifold.leapIntialized) {
-			manifold.leapIntialized = true;
-			manifold.tryToControlInputWithLeap();
-		}
-		manifold.cursorControl = "leap";
-		document.getElementById("control-button").innerHTML = "Control with Mouse";
-		document.getElementById("control").innerHTML = "Leap Motion";
-	}
 };
 
 
@@ -136,9 +137,9 @@ var foo = function() {
 	renderer.setClearColor(0x000000, 1.0);
 
 	//var board = manifold.board("board", window.innerWidth / 2, window.innerHeight - 10);
-	var board_A = manifold.board("boards", window.innerWidth, window.innerHeight, 0.000, 0.15, 0.330, 0.7, renderer, 2);
-	var board_B = manifold.board("boards", window.innerWidth, window.innerHeight, 0.335, 0.15, 0.330, 0.7, renderer, 2);
-	var board_C = manifold.board("boards", window.innerWidth, window.innerHeight, 0.670, 0.15, 0.330, 0.7, renderer);
+	var board_A = manifold.board("board_A", window.innerWidth, window.innerHeight, 0.000, 0.15, 0.330, 0.7, renderer, 2);
+	var board_B = manifold.board("board_B", window.innerWidth, window.innerHeight, 0.335, 0.15, 0.330, 0.7, renderer, 2);
+	var board_C = manifold.board("board_C", window.innerWidth, window.innerHeight, 0.670, 0.15, 0.330, 0.7, renderer);
 
 	var space_A = manifold.space2(board_A, new THREE.Vector3(0,0,0), "axes", "A");
 	var space_B = manifold.space3(board_B, new THREE.Vector3(0,0,0), "axes", "B");

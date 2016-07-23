@@ -23,7 +23,6 @@ var toggleLeapControl = function(){
 	}
 };
 
-
 /*
 Thoughts:
  - The interface still seems messy. I should consider
@@ -83,8 +82,8 @@ var foo = function() {
 	var renderer = new THREE.WebGLRenderer({alpha:true, antialias:true});
 	renderer.setClearColor(0x000000, 1.0);
 
-	var board_A = manifold.board("boards", window.innerWidth, window.innerHeight, 0, 0.15, 0.5, 0.7, renderer);
-	var board_B = manifold.board("boards", window.innerWidth, window.innerHeight, 0.5, 0.15, 0.5, 0.7, renderer);
+	var board_A = manifold.board("board_A", window.innerWidth, window.innerHeight, 0, 0.15, 0.5, 0.7, renderer);
+	var board_B = manifold.board("board_B", window.innerWidth, window.innerHeight, 0.5, 0.15, 0.5, 0.7, renderer);
 
 	var space_A = manifold.space3(board_A, new THREE.Vector3(0,0,0), "axes", "A");
 	var space_B = manifold.space3(board_B, new THREE.Vector3(0,0,0), "axes", "B");

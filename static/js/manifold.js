@@ -7,9 +7,6 @@ Explain multivariable calculus in the browser!
 The latest version of this project may be found at github.com/yeahpython/manifold
 */
 
-console.log(window);
-console.log(this);
-
 (function(manifold, $, THREE, undefined){
 	var xAxisMaterial = new THREE.LineBasicMaterial({
 		color: 0xff0000,
@@ -119,7 +116,8 @@ console.log(this);
         vector.x += board.view.left;
 
         vector.y *= board.view.height;
-        vector.y += board.view.bottom;
+        vector.y += 1 - board.view.bottom - board.view.height;
+
 
 
         vector.x *= board.renderer.domElement.width;
@@ -201,7 +199,8 @@ console.log(this);
    innerWidth: fractional width of this view
   innerHeight: fractional height of this view
 	*/
-	manifold.board = function(id, width, height, left, bottom, innerWidth, innerHeight, renderer, dimensions) {
+	manifold.board = function(target, width, height, left, bottom, innerWidth, innerHeight, renderer, dimensions) {
+		var id = "boards";
 		dimensions = dimensions || 3;
 
 		var view = {
@@ -231,6 +230,12 @@ console.log(this);
 			controls.target = new THREE.Vector3(0, 0, 0);
 			controls.maxDistance = 150;
 		}
+		controls.enabled=false;
+		$("#"+target).hover(function(){
+			controls.enabled=true;
+		}, function(){
+			controls.enabled=false;
+		});
 
 
 		// enabled Orbit controls when a different panel is clicked.
@@ -255,13 +260,22 @@ console.log(this);
 
 		var callback = function() {
 			renderer.setSize( window.innerWidth, window.innerHeight );
+			var rect = document.getElementById(target).getBoundingClientRect()
+			view.left = rect.left / window.innerWidth
+			view.bottom = 1 - (rect.bottom / window.innerHeight)
+			view.width = rect.width / window.innerWidth
+			view.height = rect.height / window.innerHeight
 			if (dimensions == 2) {
-				camera.top = 5 * window.innerHeight * innerHeight / window.innerWidth / innerWidth;
-				camera.bottom = -5 * window.innerHeight * innerHeight / window.innerWidth / innerWidth;
+				camera.top = 5 * rect.height / rect.width;
+				camera.bottom = -5 * rect.height / rect.width;
 			}
 		}
+		callback();
 
+		// TODO(Tommy): More thorough cases for when you might want to resize an image.
 		window.addEventListener('resize', callback, false);
+		window.addEventListener('scroll', callback, false);
+
 
 
 		var box = document.getElementById(id);
@@ -733,9 +747,9 @@ console.log(this);
 
 			}, false);
 			document.addEventListener('mouseup', function (e) {
-				for (var i = 0; i < boards.length; i++) {
+				/*for (var i = 0; i < boards.length; i++) {
 					boards[i].controls.enabled = true;
-				}
+				}*/
 				selection = null;
 			}, false);
 		}
@@ -856,29 +870,30 @@ console.log(this);
 			.appendTo($("#description"));
 		$("#description")[0].innerHTML += ": " + dimensions + "-dimensional basis in " + space.name + "<br>"
 		*/
-		var basisLength = 1.0;
+		var basisLength = 1.031415;
 
 		var basis = new THREE.Object3D();
 		space.add(basis);
 
 		var xUnit = new THREE.Geometry();
+		// 0.000001 is here to avoid singular matrices for some reason
 		xUnit.vertices.push(
 			new THREE.Vector3( 0, 0, 0 ),
-			new THREE.Vector3( basisLength, 0, 0 ));
-		basis.add(new THREE.Line( xUnit, xAxisMaterial, THREE.LinePieces));
+			new THREE.Vector3( basisLength, 0.0, 0 ));
+		basis.add(new THREE.Line( xUnit, xAxisMaterial));
 
 		var yUnit = new THREE.Geometry();
 		yUnit.vertices.push(
 			new THREE.Vector3( 0, 0, 0 ),
-			new THREE.Vector3( 0, basisLength, 0 ));
-		basis.add(new THREE.Line( yUnit, yAxisMaterial, THREE.LinePieces));
+			new THREE.Vector3( 0, basisLength, 0.0 ));
+		basis.add(new THREE.Line( yUnit, yAxisMaterial));
 
 		if (dimensions == 3) {
 			var zUnit = new THREE.Geometry();
 			zUnit.vertices.push(
 				new THREE.Vector3( 0, 0, 0 ),
-				new THREE.Vector3( 0, 0, basisLength ));
-			basis.add(new THREE.Line( zUnit, zAxisMaterial, THREE.LinePieces));
+				new THREE.Vector3( 0, 0.0, basisLength ));
+			basis.add(new THREE.Line( zUnit, zAxisMaterial));
 		}
 		/* basis.add(i);
 		basis.add(j);
