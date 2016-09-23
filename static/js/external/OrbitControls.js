@@ -281,6 +281,8 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 		}
 
+		manifold.need_redraw = true;
+
 	};
 
 

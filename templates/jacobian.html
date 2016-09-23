@@ -1,24 +1,23 @@
 {% extends "base.html" %}
 {% block javascript %} <script src="/static/js/JacobianDemo.js"></script>{% endblock %}
+{% block title_content%}
+<h2>What the fuck is a Jacobian?</h2>
+Note: This is best explained in person. If you were able to find a person, they would say something similar to the following: Say you have a function <i>f</i> from one space A to another space B. The Jacobian of <i>f</i>, which we sometimes write as <i>J f</i>, is new function that, for each element x of A, gives us a linear approxmation of the function in a neighborhood of x. In the demo below, we have the composition of two functions. The red and green lines represent <i>linear approximations</i> of the function and may be explicitly recorded in terms of a matrix for each x. The columns of the matrix represent invidual lines and the vectors consist of partial derivatives.
+
+{% endblock %}
+
 {% block page_content %}
-<div id = "boards" style = "display:inline-block;position:fixed"></div>
-yo<br>
-<div id = "board_A">hello</div>
-<div id = "board_B">what</div>
-<div style = "height:300px"></div>
-<div id = "board_C">up</div>
-yo<br>
-yo<br>
-yo<br>
-yo<br>
-yo<br>yo<br>
-
-yo<br>yo<br>
-
-yo<br>
-yo<br>
-yo<br>
-yo<br>
-yo<br>
-
+<div class="container-fluid">
+  <div class = "row">
+    <div class = "col-md-4 col-xs-12" id = "board_A"></div>
+    <div class = "col-md-4 col-xs-12" id = "board_B"></div>
+    <div class = "col-md-4 col-xs-12" id = "board_C"></div>
+    <div class = "col-md-12 col-xs-12" id = "info_panel">
+      <span id="control"></span>
+      <div id = "extra_content">
+        <div id = "description"></div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

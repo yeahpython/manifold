@@ -25,15 +25,15 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 	var linematerial = new THREE.LineDashedMaterial({
 		color: 0xffffff,
-		dashSize: 0.2,
-		gapSize: 0.2,
+		dashSize: 20.0,
+		gapSize: 0.0, // lol
 		linewidth: 1,
 		scale: 1
 	});
 
 	var parallelogramLineMaterial = new THREE.LineBasicMaterial({
 		color: 0x444444,
-		linewidth: 2
+		linewidth: 5
 	});
 
 	var surfaceMaterial = new THREE.MeshBasicMaterial({
@@ -67,7 +67,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	var boards = [];
 
 	var cursorSurface = (function() {
-		cursorSurface = new THREE.SphereGeometry(6,100,100);
+		cursorSurface = new THREE.SphereGeometry(6,10,10);
 		var min = new THREE.Vector3(-1.5,-1.5,-1.5);
 		var max = new THREE.Vector3(1.5,1.5,1.5);
 		for (var i = 0; i < cursorSurface.vertices.length; i++) {
@@ -127,22 +127,32 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 	// Draws a line from the position of object_1 to the position of object_2.
 	// object_1 and object_2 don't need to be in the same three-dimensional scene.
-	manifold.metaConnection = function(object_1, board_1, object_2, board_2) {
-		var c_1 = snap.circle(100,100,3);
-		c_1.attr("fill", "white");
+	manifold.metaConnection = function(object_1, board_1, object_2, board_2, name="function") {
+		/*var c_1 = snap.circle(100,100,3);
+		c_1.attr("fill", "white");*/
 
-		var c_2 = snap.circle(100,100,3);
-		c_2.attr("fill", "white");
+		// var c_2 = snap.circle(0,0,10);
+		// c_2.attr("fill", "red");
 
 		//var l = snap.line(50,50,100,100);
 		//l.attr("stroke", "white");
+		//
+
+		var arrow = snap.path("M -6 -4 L 0 0 L -6 4");
+		arrow.attr("stroke", "white");
+		arrow.attr("fill", "transparent")
 
 		var l_2 = snap.path("M 100 200 C 100 199 200 199 400 200");
 		l_2.attr("stroke", "white");
 		l_2.attr("fill", "transparent");
+		l_2.attr("stroke-width", "2")
+		marker = arrow.marker(-30, -30,60,60,0,0)
+		l_2.attr("marker-end", marker);
 
 		var duration = 0;
 		var x_1, y_1, x_1_a, y_1_a, x_2, y_2, x_2_a, y_2_a;
+		var text = snap.text(0, 0, name).attr({'fontFamily':'serif', 'fontStyle':'italic', 'fill' : 'white',  'stroke': 'white', 'stroke-width': 0.2 });
+		var up_bulge = 0;
 		updateRules.push({
 			update:function(){
 				var vector_1 = getScreenPositionFromBoard(object_1.position, board_1, "2D");
@@ -151,16 +161,30 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				var point_1_ok = ((vector_1.z >= 0) && (vector_1.z <= 1)) || (board_1.dimensions == 2);
 				var point_2_ok = ((vector_2.z >= 0) && (vector_2.z <= 1)) || (board_2.dimensions == 2);
 
-				var endpoint_1 = new THREE.Vector3().lerpVectors(vector_1, vector_2, 0);
-				var endpoint_2 = new THREE.Vector3().lerpVectors(vector_2, vector_1, 0);
+				var midpoint = new THREE.Vector3().lerpVectors(vector_1, vector_2, 0.5);
+				var orthogonal  = new THREE.Vector3().subVectors(vector_2, vector_1).applyAxisAngle(new THREE.Vector3(0,0,1), -3.1415926/2);
+				var scaled_orthogonal = new THREE.Vector3().copy(orthogonal).multiplyScalar(0.1);
+				var target = new THREE.Vector3().copy(midpoint).add(scaled_orthogonal);
+				var offset_1 = new THREE.Vector3().subVectors(target, vector_1).normalize();
+				var endpoint_1 = new THREE.Vector3().copy(vector_1).add(new THREE.Vector3().copy(offset_1).multiplyScalar(100));
+				var offset_2 = new THREE.Vector3().subVectors(target, vector_2).normalize();
+				var endpoint_2 = new THREE.Vector3().copy(vector_2).add(new THREE.Vector3().copy(offset_2).multiplyScalar(100));
+
+
+				// var endpoint_1 = new THREE.Vector3().lerpVectors(vector_1, vector_2, 0.2);
+				// var endpoint_2 = new THREE.Vector3().lerpVectors(vector_2, vector_1, 0.2);
 
 				if (point_1_ok) {
 					x_1 = Math.round(endpoint_1.x);
 					y_1 = Math.round(endpoint_1.y);
-					x_1_a = Math.round(endpoint_1.x);
-					y_1_a = Math.round(endpoint_1.y - 80);
-
-					c_1.animate({cx : x_1, cy: y_1}, duration);
+					var target_1 = new THREE.Vector3().lerpVectors(vector_1, target, 0.9);
+					x_1_a = Math.round(target_1.getComponent(0));
+					y_1_a = Math.round(target_1.getComponent(1));
+					/*x_1_a = Math.round(endpoint_1.x);
+					y_1_a = Math.round(endpoint_1.y - up_bulge);*/
+					// NOTE THAT animate HAS MEMORY LEAKS and looks like lag
+					// c_1.animate({cx : x_1, cy: y_1}, duration);
+					//c_1.attr({cx : x_1, cy: y_1})
 					//l.animate({x1 : endpoint_1.x, y1:endpoint_1.y}, duration);
 				} else {
 					// console.log("not updating connection to " + object_1.name + " because z value is " + vector_1.z);
@@ -168,13 +192,19 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				if (point_2_ok) {
 					x_2 = Math.round(endpoint_2.x);
 					y_2 = Math.round(endpoint_2.y);
-					x_2_a = Math.round(endpoint_2.x);
-					y_2_a = Math.round(endpoint_2.y - 80);
-					c_2.animate({cx : x_2, cy: y_2}, duration);
+					var target_2 = new THREE.Vector3().lerpVectors(vector_2, target, 0.9);
+					x_2_a = Math.round(target_2.getComponent(0));
+					y_2_a = Math.round(target_2.getComponent(1));
+					/*x_2_a = Math.round(endpoint_2.x);
+					y_2_a = Math.round(endpoint_2.y - up_bulge);*/
+					// NOTE THAT animate HAS MEMORY LEAKS and looks like lag
+					//c_2.animate({cx : x_2, cy: y_2}, duration);
+					//c_2.attr({cx : x_2, cy: y_2})
 					//l.animate({x2 : endpoint_2.x, y2:endpoint_2.y}, duration);
 				} else {
 					// console.log("not updating connection to " + object_2.name+ " because z value is " + vector_2.z);
 				}
+				text.transform("T" + Math.round(target.getComponent(0)) + " " + (Math.round(target.getComponent(1)) - 10));
 				var target = "M " + x_1   + " " + y_1   + " C " + x_1_a + " " + y_1_a +
 				             " "  + x_2_a + " " + y_2_a + " "   + x_2   + " " + y_2;
 				//console.log(target);
@@ -199,24 +229,24 @@ The latest version of this project may be found at github.com/yeahpython/manifol
    innerWidth: fractional width of this view
   innerHeight: fractional height of this view
 	*/
-	manifold.board = function(target, width, height, left, bottom, innerWidth, innerHeight, renderer, dimensions) {
+	manifold.board = function(target, renderer, dimensions) {
 		var id = "boards";
 		dimensions = dimensions || 3;
-
-		var view = {
-			left: left,
-			bottom: bottom,
-			width: innerWidth,
-			height: innerHeight
-		};
+		var view = {};
+		var width = 100;
+		var height = 100;
+		var left = 0;
+		var bottom = 0;
+		var innerWidth = 100;
+		var innerHeight = 100;
 
 		var scene = new THREE.Scene();
 		var camera;
 		if (dimensions == 3) {
 			camera = new THREE.PerspectiveCamera( 100, width / height, 0.1, 1000 );
-			camera.position.setX(10);
-			camera.position.setY(10);
-			camera.position.setZ(10);
+			camera.position.setX(2);
+			camera.position.setY(2);
+			camera.position.setZ(2);
 		} else {
 			camera = new THREE.OrthographicCamera( -5, 5, 5 * height * innerHeight / width / innerWidth, -5 * height * innerHeight / width / innerWidth, 1, 100 );
 			camera.position.setZ(20);
@@ -255,7 +285,6 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 		// slower, with rounded line caps
 		//var renderer = new THREE.CanvasRenderer({alpha:true, antialias:true});
-
 		renderer.setSize(width, height, true);
 
 		var callback = function() {
@@ -269,6 +298,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				camera.top = 5 * rect.height / rect.width;
 				camera.bottom = -5 * rect.height / rect.width;
 			}
+			manifold.need_redraw = true;
 		}
 		callback();
 
@@ -287,11 +317,13 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			renderer: renderer,
 			controls: controls,
 			view: view,
+			target: target,
 			dimensions: dimensions
 		};
 		boards.push(board);
 		return board;
 	};
+
 
 	// Adds an object representing three-dimensional space to the board.
 	// Adds axes by default, although this may change.
@@ -564,9 +596,9 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		return basisCopy;
 	};
 
-	var kHideControlPoint = false;
+	var kHideControlPoint = false; // Breaks redrawing rules.
 	var kUseSmallControlPoint = true;
-	var kUseBigClickSurface = false;
+	var kUseBigClickSurface = true;
 	manifold.controlPoint = function(board, space, dimensions, name, initialPosition, interactive) {
 		if (interactive === undefined) {
 			interactive = true;
@@ -594,7 +626,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				depthWrite: false
 			});
 		} else {
-			cursorSurface = new THREE.SphereGeometry(2.5, 100, 100);
+			cursorSurface = new THREE.SphereGeometry(0.5, 100, 100);
 
 			controlPointMaterial = new THREE.MeshBasicMaterial({
 				color: controlPointColor,
@@ -608,7 +640,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 
 		var clickSurface;
 		if (kUseBigClickSurface){
-			clickSurface = new THREE.SphereGeometry(2.5, 100, 100);
+			clickSurface = new THREE.SphereGeometry(0.5, 100, 100);
 		} else {
 			clickSurface = new THREE.SphereGeometry(0.1, 100, 100);
 		}
@@ -653,6 +685,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		// Allows you to select objects and possibly drag them around
 		if (interactive) {
 			document.addEventListener('mousedown', function (event) {
+				manifold.need_redraw = true;
 				var mouse_pos = getRelativeMousePositionInBoard(event.pageX, event.pageY, board);
 				mouse.x = mouse_pos.x;
 				mouse.y = mouse_pos.y;
@@ -663,6 +696,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 						board.controls.enabled = false;
 						selection = funMesh;
 						selection.material.color.set(0x00ff00);
+						$("#" + board.target).css("cursor", "move")
 						$("#point_" + name).css("color", "green");
 						var plane_intersects = raycaster.intersectObject(plane);
 						//offset.copy(plane_intersects[0].point).sub(plane.position);
@@ -700,6 +734,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 					raycaster.set(vector, new THREE.Vector3(0,0,1));
 				}
 				if (selection) {
+					manifold.need_redraw = true;
 					// Check the position where the plane is intersected
 					//
 					// TODO: contrain mouse position to board and redo raycast.
@@ -717,7 +752,11 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 						if (object_intersects[0].object !== clickMesh) {
 							throw "Unexpected collision";
 						}
-						funMesh.material.color.set(0xffff00);
+						if (funMesh.material.color.getHex() != 0xffff00) {
+							funMesh.material.color.set(0xffff00);
+							manifold.need_redraw = true;
+						}
+						$("#" + board.target).css("cursor", "move")
 						$("#point_" + name).css("color", "yellow");
 						funMesh.material.opacity = 0.6;
 						plane.position.copy(funMesh.position);
@@ -735,12 +774,18 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 							plane.lookAt(board.camera.position);
 						}
 					} else {
-						funMesh.material.color.set(controlPointColor);
+						if (funMesh.material.color.getHex() != controlPointColor) {
+							manifold.need_redraw = true;
+							funMesh.material.color.set(controlPointColor);
+							$("#" + board.target).css("cursor", "auto")
+						}
 						funMesh.material.opacity = kUnselectedOpacity;
 						$("#point_" + name).css("color", "");
 						if (kHideControlPoint) {
+							console.log("This probably breaks redraw capability");
 							funMesh.material.color.set(0xff0000);
 							funMesh.material.opacity = 0;
+							$("#" + board.target).css("cursor", "auto")
 						}
 					}
 				}
@@ -750,6 +795,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				/*for (var i = 0; i < boards.length; i++) {
 					boards[i].controls.enabled = true;
 				}*/
+				manifold.need_redraw = true;
 				selection = null;
 			}, false);
 		}
@@ -870,7 +916,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 			.appendTo($("#description"));
 		$("#description")[0].innerHTML += ": " + dimensions + "-dimensional basis in " + space.name + "<br>"
 		*/
-		var basisLength = 1.031415;
+		var basisLength = 1.0;
 
 		var basis = new THREE.Object3D();
 		space.add(basis);
@@ -939,12 +985,14 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 		// Not written yet.
 	};
 
-	var colors = [0x000000, 0x111111, 0x000000];
-
+	var colors = [0x000000];
+	var extra_draws = 10;
+	manifold.need_redraw = true;
 	manifold.render = function() {
 		// lazy (as a programmer) solution for turning off animations.
 		// frames keep on going but I don't do anythin about it.
-		if (manifold.animating) {
+		if (manifold.animating && (manifold.need_redraw || extra_draws > 0) ) {
+			console.log("Rendering lazily. Remember manifold.need_redraw.")
 			updateAll();
 			var inputX = cursor.x;
 			var inputY = cursor.y;
@@ -957,7 +1005,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				boards[i].renderer.setViewport( left, bottom, width, height );
 				boards[i].renderer.setScissor( left, bottom, width, height );
 				boards[i].renderer.enableScissorTest ( true );
-				boards[i].renderer.setClearColor(colors[i]);
+				boards[i].renderer.setClearColor(colors[i % colors.length]);
 				boards[i].renderer.render(boards[i].scene, boards[i].camera);
 				boards[i].camera.aspect = width / height;
 				boards[i].camera.updateProjectionMatrix();
@@ -965,6 +1013,8 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 				boards[i].camera.position.lerp(cameraTarget, 0.01);*/
 				boards[i].camera.lookAt(new THREE.Vector3(0,0,0));
 			}
+			manifold.need_redraw = false;
+			extra_draws -= 1;
 		}
 		requestAnimationFrame(manifold.render);
 	};
@@ -1070,6 +1120,12 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	    mouse.x = (inputX / $(window).width()) * 2 - 1;
 		mouse.y = -(inputY / $(window).height()) * 2 + 1;
 		mouse3d.set( 5*mouse.x , 5 * mouse.y, 5);
+		// need_redraw=true;
+		// console.log("mouse moved");
+	}, false);
+
+	document.addEventListener('scroll', function(e){
+		manifold.need_redraw=true;
 	}, false);
 
 	// Private Methods
@@ -1263,7 +1319,7 @@ The latest version of this project may be found at github.com/yeahpython/manifol
 	}
 
 	function createCursorSurface() {
-		var cursorSurface = new THREE.SphereGeometry(6,100,100);
+		var cursorSurface = new THREE.SphereGeometry(6,10,10);
 		//var min = new THREE.Vector3(-1.5,-1.5,-1.5);
 		//var max = new THREE.Vector3(1.5,1.5,1.5);
 		for (var i = 0; i < cursorSurface.vertices.length; i++) {

@@ -31,7 +31,7 @@ if ( Math.sign === undefined ) {
 
 // set the default log handlers
 THREE.log = function() { console.log.apply( console, arguments ); }
-THREE.warn = function() { console.warn.apply( console, arguments ); throw "Debug Error";}
+THREE.warn = function() { console.warn.apply( console, arguments ); }
 THREE.error = function() { console.error.apply( console, arguments ); }
 
 

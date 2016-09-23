@@ -33,6 +33,13 @@ var spherical = function(vector) {
 	return new THREE.Vector3(z * Math.sin(x), z * Math.cos(x) * Math.sin(y), z * Math.cos(x) * Math.cos(y));
 };
 
+var rotation = function(vector) {
+	z = vector.z;
+	x = -vector.y;
+	y = vector.x;
+	return new THREE.Vector3(x, y, z);
+}
+
 var spherical2D = function(vector) {
 	z = vector.z + 5; // vector.z is always zero, but I don't like the no-inverse errors.
 	x = vector.x * 0.5;
@@ -63,7 +70,7 @@ var donut = function(vector) {
 	var a = 3;
 	var b = 4;
 	var exp = Math.exp(vector.z);
-	var scaling = 5;
+	var scaling = 1;
 	var inner_radius = scaling + scaling * exp / (1+exp);
 	var radius = scaling * 2;
 	var t = Math.sin(0.6 * vector.x) * (radius + (radius - inner_radius) * Math.cos(vector.y));
@@ -137,15 +144,15 @@ var foo = function() {
 	renderer.setClearColor(0x000000, 1.0);
 
 	//var board = manifold.board("board", window.innerWidth / 2, window.innerHeight - 10);
-	var board_A = manifold.board("board_A", window.innerWidth, window.innerHeight, 0.000, 0.15, 0.330, 0.7, renderer, 2);
-	var board_B = manifold.board("board_B", window.innerWidth, window.innerHeight, 0.335, 0.15, 0.330, 0.7, renderer, 2);
-	var board_C = manifold.board("board_C", window.innerWidth, window.innerHeight, 0.670, 0.15, 0.330, 0.7, renderer);
+	var board_A = manifold.board("board_A", renderer, 2);
+	var board_B = manifold.board("board_B", renderer, 2);
+	var board_C = manifold.board("board_C", renderer);
 
 	var space_A = manifold.space2(board_A, new THREE.Vector3(0,0,0), "axes", "A");
 	var space_B = manifold.space3(board_B, new THREE.Vector3(0,0,0), "axes", "B");
 	var space_C = manifold.space3(board_C, new THREE.Vector3(0,0,0), "axes", "C");
 
-	var f = manifold.mathFunction(squiggle_2, "f");
+	var f = manifold.mathFunction(rotation, "f");
 	var g = manifold.mathFunction(donut, "g");
 
 	var controlPoint2D = manifold.controlPoint(board_A, space_A, 2, "x");
@@ -153,27 +160,8 @@ var foo = function() {
 	var warpyGridLines = manifold.image(f, sneakyGridLines, space_B, true, board_A, board_B);
 	var warpyGridLines2 = manifold.image(g, warpyGridLines, space_C, true, board_B, board_C);
 
-
-
 	var tangentSpace2D = manifold.createTangentSpace(space_A, controlPoint2D);
 	var basicBasis2D = manifold.addUnitBasis(2, tangentSpace2D);
-
-	// var controlPoint = manifold.controlPoint(board_C, space_C, 3, "y");
-
-	/*
-	// Add a surface that is mapped through the function
-	var surface = manifold.surface("cube", space_C);
-	manifold.controlSurfacePositionWithCursor(surface);
-	var surface2 = manifold.image(spherical, surface, space_B);
-	// manifold.controlSurfacePositionWithControlPoint(surface, controlPoint);
-	*/
-
-	//var tangentSpace = manifold.createTangentSpace(space_C, controlPoint);
-	//var basicBasis = manifold.addUnitBasis(3, tangentSpace);
-
-
-
-	// How can I make Jacobian operations automatic?
 	var D_Spherical = manifold.approximateJacobian(f, 0.0001);
 	var jacobianMatrixDisplay = manifold.showJacobian(D_Spherical, controlPoint2D, 2, 2);
 	var transformedTangentSpace = manifold.warpTangentSpaceWithJacobian(tangentSpace2D, space_B, D_Spherical, f, controlPoint2D);
@@ -181,8 +169,8 @@ var foo = function() {
 	var controlPointImage2 = manifold.imageOfControlPoint(controlPointImage, g, space_C);
 
 
-	var connection = manifold.metaConnection(controlPoint2D, board_A, controlPointImage, board_B);
-	var connection = manifold.metaConnection(controlPointImage, board_B, controlPointImage2, board_C);
+	var connection = manifold.metaConnection(controlPoint2D, board_A, controlPointImage, board_B, "f");
+	var connection = manifold.metaConnection(controlPointImage, board_B, controlPointImage2, board_C, "g");
 
 	var D_spherical2 = manifold.approximateJacobian(g, 0.0001);
 	var transformedTangentSpace2 = manifold.warpTangentSpaceWithJacobian(transformedTangentSpace, space_C, D_spherical2, g, controlPointImage);

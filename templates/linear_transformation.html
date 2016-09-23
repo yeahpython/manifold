@@ -1,7 +1,22 @@
 {% extends "base.html" %}
 {% block javascript %} <script src="/static/js/LinearTransformationDemo.js"></script> {% endblock %}
+
+{% block title_content%}
+<h2>Matrices as Linear Transformations</h2>
+Try clicking and dragging the scenes and the control points as well as zooming in and out.
+{% endblock %}
+
 {% block page_content %}
-<div id = "boards" style = "display:inline-block;position:fixed"></div>
-<div id = "board_A">hello</div>
-<div id = "board_B">what</div>
+<div class="container-fluid">
+	<div class = "row">
+	  <div class = "col-md-6 col-xs-12" id = "board_A"></div>
+	  <div class = "col-md-6 col-xs-12" id = "board_B"></div>
+	  <div class = "col-md-3 col-xs-12" id = "info_panel">
+	  <span id="control"></span>
+            <div id = "extra_content">
+              <div id = "description"></div>
+            </div>
+        </div>
+	</div>
+</div>
 {% endblock %}
